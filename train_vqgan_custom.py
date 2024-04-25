@@ -14,12 +14,11 @@ def main():
     pl.seed_everything(42)
 
     parser = argparse.ArgumentParser()
-    # parser = pl.Trainer.add_argparse_args(parser)
 
     # trainer args
     parser.add_argument("--nodes", type=int, default=1, help="nodes")
     parser.add_argument("--devices", type=int, default=8, help="e.g., gpu number")
-    parser.add_argument("--default_root_dir", type=str, default="debug")
+    parser.add_argument("--default_root_dir", type=str, default="logs/debug")
     parser.add_argument("--max_steps", type=int, default=2000000, help="max_steps")
 
     # model args
@@ -52,8 +51,6 @@ def main():
     parser.add_argument("--num_workers", type=int, default=8)
     parser.add_argument("--resolution", type=int, default=256)
     parser.add_argument('--image_channels', type=int, default=3)
-
-    # parser = VQGAN.add_model_specific_args(parser)
 
     args = parser.parse_args()
     # args.default_root_dir = os.path.join(
