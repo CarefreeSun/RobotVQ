@@ -3,6 +3,7 @@ __pycache__/
 lightning_logs/
 .ipynb_checkpoints/
 data_lists/
+data_bridge2_json_shards/
 *.mp4
 *.egg-info
 jobs

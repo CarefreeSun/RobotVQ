@@ -8,6 +8,7 @@ import torch
 import torch.nn as nn
 from torchvision import models
 from collections import namedtuple
+from torchvision.models import VGG16_Weights
 
 URL_MAP = {
     "vgg_lpips": "https://heibox.uni-heidelberg.de/f/607503859c864bc1b30b/?dl=1"
@@ -73,7 +74,7 @@ class LPIPS(nn.Module):
 
     @classmethod
     def from_pretrained(cls, name="vgg_lpips"):
-        if name is not "vgg_lpips":
+        if name != "vgg_lpips":
             raise NotImplementedError
         model = cls()
         ckpt = get_ckpt_path(name, os.path.join(os.path.dirname(os.path.abspath(__file__)), "cache"))
@@ -118,7 +119,8 @@ class NetLinLayer(nn.Module):
 class vgg16(torch.nn.Module):
     def __init__(self, requires_grad=False, pretrained=True):
         super(vgg16, self).__init__()
-        vgg_pretrained_features = models.vgg16(pretrained=pretrained).features
+        # vgg_pretrained_features = models.vgg16(pretrained=pretrained).features
+        vgg_pretrained_features = models.vgg16(weights=VGG16_Weights.DEFAULT).features
         self.slice1 = torch.nn.Sequential()
         self.slice2 = torch.nn.Sequential()
         self.slice3 = torch.nn.Sequential()
