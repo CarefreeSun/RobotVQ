@@ -97,6 +97,7 @@ class VQGANDeepSpeed(pl.LightningModule):
         B, C, T, H, W = x.shape
         
         z = self.pre_vq_conv(self.encoder(x))
+
         vq_output = self.codebook(z)
         x_recon = self.decoder(self.post_vq_conv(vq_output['embeddings']))
 
@@ -152,7 +153,8 @@ class VQGANDeepSpeed(pl.LightningModule):
                             'train/aeloss': aeloss,
                             'train/commitment_loss': vq_output['commitment_loss'],
                             'train/perplexity': vq_output['perplexity']}, 
-                            prog_bar=True, logger=True, on_step=True, on_epoch=True, sync_dist=True)
+                            prog_bar=True, logger=True, on_step=True, on_epoch=True, sync_dist=True,
+                            batch_size=self.args.batch_size)
 
             return recon_loss, x_recon, vq_output, aeloss, perceptual_loss, gan_feat_loss
 
@@ -176,7 +178,8 @@ class VQGANDeepSpeed(pl.LightningModule):
                             'train/d_image_loss': d_image_loss,
                             'train/d_video_loss': d_video_loss,
                             'train/discloss': discloss},
-                            prog_bar=True, logger=True, on_step=True, on_epoch=True, sync_dist=True)
+                            prog_bar=True, logger=True, on_step=True, on_epoch=True, sync_dist=True,
+                            batch_size=self.args.batch_size)
 
             return discloss
 
@@ -201,7 +204,8 @@ class VQGANDeepSpeed(pl.LightningModule):
                        'val/perceptual_loss': perceptual_loss,
                        'val/perplexity': vq_output['perplexity'],
                        'val/commitment_loss': vq_output['commitment_loss']}, 
-                       prog_bar=True, sync_dist=True)
+                       prog_bar=True, sync_dist=True,
+                       batch_size=self.args.batch_size)
         
     def configure_optimizers(self):
 

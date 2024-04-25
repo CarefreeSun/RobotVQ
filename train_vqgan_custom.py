@@ -47,7 +47,7 @@ def main():
         "--dataroot", type=str, default="/mnt/data-rundong/TATS/data_lists"
     )
     parser.add_argument("--sequence_length", type=int, default=4)
-    parser.add_argument("--batch_size", type=int, default=4)
+    parser.add_argument("--batch_size", type=int, default=12)
     parser.add_argument("--num_workers", type=int, default=2)
     parser.add_argument("--resolution", type=int, default=256)
     parser.add_argument('--image_channels', type=int, default=3)
@@ -120,7 +120,7 @@ def main():
     # )
     trainer = pl.Trainer(
         callbacks=callbacks,
-        val_check_interval=1000,
+        val_check_interval=25,
         default_root_dir=args.default_root_dir,
         accelerator="gpu",
         devices=args.devices,
