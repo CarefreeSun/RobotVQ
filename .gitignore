@@ -2,6 +2,7 @@ __pycache__/
 **/__pycache__/
 lightning_logs/
 .ipynb_checkpoints/
+data_lists/
 *.mp4
 *.egg-info
 jobs
