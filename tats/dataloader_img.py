@@ -32,6 +32,9 @@ class ImageVideoDataset(Dataset):
 
         self.keys = list(self.filenames.keys())
 
+        # remove keys that have less than self.length frames
+        self.keys = [key for key in self.keys if len(self.filenames[key]) >= self.length]
+
     def __len__(self):
         return len(self.keys)
     

@@ -110,7 +110,7 @@ class VQGANDeepSpeed(pl.LightningModule):
         if log_image:
             return frames, frames_recon, x, x_recon
 
-        if batch_idx == 0:
+        if batch_idx is not None and batch_idx % 2 == 0:
             # autoencoder
             perceptual_loss = 0
             if self.perceptual_weight > 0:
@@ -156,7 +156,7 @@ class VQGANDeepSpeed(pl.LightningModule):
 
             return recon_loss, x_recon, vq_output, aeloss, perceptual_loss, gan_feat_loss
 
-        if batch_idx == 1:
+        if batch_idx is not None and batch_idx % 2 == 1:
             # discriminator
             logits_image_real, _ = self.image_discriminator(frames.detach())
             logits_video_real, _ = self.video_discriminator(x.detach())
@@ -185,11 +185,11 @@ class VQGANDeepSpeed(pl.LightningModule):
 
     def training_step(self, batch, batch_idx):
         x = batch['video']
-        if batch_idx == 0:
+        if batch_idx % 2 == 0:
             recon_loss, _, vq_output, aeloss, perceptual_loss, gan_feat_loss = self.forward(x, batch_idx)
             commitment_loss = vq_output['commitment_loss']
             loss = recon_loss + commitment_loss + aeloss + perceptual_loss + gan_feat_loss
-        if batch_idx == 1:
+        if batch_idx % 2 == 1:
             discloss = self.forward(x, batch_idx)
             loss = discloss
         return loss

@@ -48,7 +48,7 @@ def main():
     )
     parser.add_argument("--sequence_length", type=int, default=4)
     parser.add_argument("--batch_size", type=int, default=4)
-    parser.add_argument("--num_workers", type=int, default=8)
+    parser.add_argument("--num_workers", type=int, default=2)
     parser.add_argument("--resolution", type=int, default=256)
     parser.add_argument('--image_channels', type=int, default=3)
 
