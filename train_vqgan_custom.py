@@ -53,9 +53,16 @@ def main():
     parser.add_argument('--image_channels', type=int, default=3)
 
     args = parser.parse_args()
-    # args.default_root_dir = os.path.join(
-    #     "/mnt/data-rundong/VQGAN", args.default_root_dir
-    # )
+
+    try:
+        print('MASTER_ADDR', os.environ['MASTER_ADDR'])
+        print('MASTER_PORT', os.environ['MASTER_PORT'])
+        print('NODE_RANK', os.environ['NODE_RANK'])
+        print('LOCAL_RANK', os.environ['LOCAL_RANK'])
+        print('RANK', os.environ['RANK'])
+        print('WORLD_SIZE', os.environ['WORLD_SIZE'])
+    except:
+        pass
 
     train_dataloader = get_image_video_dataloader(args, split='train')
     test_dataloader = get_image_video_dataloader(args, split='test')
