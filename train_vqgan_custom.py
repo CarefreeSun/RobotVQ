@@ -135,7 +135,7 @@ def main():
         log_every_n_steps=10,
         strategy='ddp',
         # strategy=strategy,
-        precision=16,
+        precision='16-mixed',
         max_steps=args.max_steps,
         sync_batchnorm=True,
     )
