@@ -19,7 +19,7 @@ def main():
     parser.add_argument("--nodes", type=int, default=1, help="nodes")
     parser.add_argument("--devices", type=int, default=8, help="e.g., gpu number")
     parser.add_argument("--default_root_dir", type=str, default="logs/debug")
-    parser.add_argument("--max_steps", type=int, default=2000000, help="max_steps")
+    parser.add_argument("--max_steps", type=int, default=500000, help="max_steps")
 
     # model args
     parser.add_argument('--embedding_dim', type=int, default=256)
@@ -51,6 +51,7 @@ def main():
     parser.add_argument("--num_workers", type=int, default=1)
     parser.add_argument("--resolution", type=int, default=256)
     parser.add_argument('--image_channels', type=int, default=3)
+    parser.add_argument('--val_check_interval', type=int, default=50)
 
     args = parser.parse_args()
 
@@ -94,8 +95,8 @@ def main():
             filename="{epoch}-{step}-10000-{train/recon_loss:.2f}",
         )
     )
-    callbacks.append(ImageLogger(batch_frequency=750, max_images=4, clamp=True))
-    callbacks.append(VideoLogger(batch_frequency=1500, max_videos=4, clamp=True))
+    callbacks.append(ImageLogger(batch_frequency=200, max_images=4, clamp=True))
+    callbacks.append(VideoLogger(batch_frequency=200, max_videos=4, clamp=True))
 
     # load the most recent checkpoint file
     # base_dir = os.path.join(args.default_root_dir, "lightning_logs")
@@ -127,7 +128,7 @@ def main():
     # )
     trainer = pl.Trainer(
         callbacks=callbacks,
-        val_check_interval=25,
+        val_check_interval=args.val_check_interval,
         default_root_dir=args.default_root_dir,
         accelerator="gpu",
         devices=args.devices,
