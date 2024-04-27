@@ -93,7 +93,7 @@ class VQGANDeepSpeed(pl.LightningModule):
         h = self.post_vq_conv(shift_dim(h, -1, 1))
         return self.decoder(h)
 
-    def forward(self, x, batch_idx=None, log_image=False):
+    def forward(self, x, opt_stage=None, log_image=False): # opt_stage is 0 for autoencoder, 1 for discriminator
         B, C, T, H, W = x.shape
         
         z = self.pre_vq_conv(self.encoder(x))
@@ -111,101 +111,96 @@ class VQGANDeepSpeed(pl.LightningModule):
         if log_image:
             return frames, frames_recon, x, x_recon
 
-        if batch_idx is not None and batch_idx % 2 == 0:
-            # autoencoder
-            perceptual_loss = 0
-            if self.perceptual_weight > 0:
-                perceptual_loss = self.perceptual_model(frames, frames_recon).mean() * self.perceptual_weight
+        if opt_stage is not None:
+            if opt_stage == 0: # autoencoder
+                perceptual_loss = 0
+                if self.perceptual_weight > 0:
+                    perceptual_loss = self.perceptual_model(frames, frames_recon).mean() * self.perceptual_weight
 
-            logits_image_fake, pred_image_fake = self.image_discriminator(frames_recon)
-            logits_video_fake, pred_video_fake = self.video_discriminator(x_recon)
-            g_image_loss = -torch.mean(logits_image_fake)
-            g_video_loss = -torch.mean(logits_video_fake)
-            g_loss = self.image_gan_weight*g_image_loss + self.video_gan_weight*g_video_loss
-            
-            disc_factor = adopt_weight(self.global_step, threshold=self.args.discriminator_iter_start)
-            aeloss = disc_factor * g_loss
+                logits_image_fake, pred_image_fake = self.image_discriminator(frames_recon)
+                logits_video_fake, pred_video_fake = self.video_discriminator(x_recon)
+                g_image_loss = -torch.mean(logits_image_fake)
+                g_video_loss = -torch.mean(logits_video_fake)
+                g_loss = self.image_gan_weight*g_image_loss + self.video_gan_weight*g_video_loss
+                
+                disc_factor = adopt_weight(self.global_step, threshold=self.args.discriminator_iter_start)
+                aeloss = disc_factor * g_loss
 
-            # gan feature matching loss
-            image_gan_feat_loss = 0
-            video_gan_feat_loss = 0
-            feat_weights = 4.0 / (3 + 1)
-            if self.image_gan_weight > 0:
-                logits_image_real, pred_image_real = self.image_discriminator(frames)
-                for i in range(len(pred_image_fake)-1):
-                    image_gan_feat_loss += feat_weights * F.l1_loss(pred_image_fake[i], pred_image_real[i].detach()) * (self.image_gan_weight>0)
-            if self.video_gan_weight > 0:
-                logits_video_real, pred_video_real = self.video_discriminator(x)
-                for i in range(len(pred_video_fake)-1):
-                    video_gan_feat_loss += feat_weights * F.l1_loss(pred_video_fake[i], pred_video_real[i].detach()) * (self.video_gan_weight>0)
+                # gan feature matching loss
+                image_gan_feat_loss = 0
+                video_gan_feat_loss = 0
+                feat_weights = 4.0 / (3 + 1)
+                if self.image_gan_weight > 0:
+                    logits_image_real, pred_image_real = self.image_discriminator(frames)
+                    for i in range(len(pred_image_fake)-1):
+                        image_gan_feat_loss += feat_weights * F.l1_loss(pred_image_fake[i], pred_image_real[i].detach()) * (self.image_gan_weight>0)
+                if self.video_gan_weight > 0:
+                    logits_video_real, pred_video_real = self.video_discriminator(x)
+                    for i in range(len(pred_video_fake)-1):
+                        video_gan_feat_loss += feat_weights * F.l1_loss(pred_video_fake[i], pred_video_real[i].detach()) * (self.video_gan_weight>0)
 
-            gan_feat_loss = disc_factor * self.gan_feat_weight * (image_gan_feat_loss + video_gan_feat_loss)
+                gan_feat_loss = disc_factor * self.gan_feat_weight * (image_gan_feat_loss + video_gan_feat_loss)
 
-            self.log_dict({'train/logits_image_fake': logits_image_fake.mean().detach(),
-                            'train/logits_video_fake': logits_video_fake.mean().detach(),
-                            'train/g_image_loss': g_image_loss,
-                            'train/g_video_loss': g_video_loss,
-                            'train/image_gan_feat_loss': image_gan_feat_loss,
-                            'train/video_gan_feat_loss': video_gan_feat_loss,
-                            'train/perceptual_loss': perceptual_loss,
-                            'train/recon_loss': recon_loss,
-                            'train/aeloss': aeloss,
-                            'train/commitment_loss': vq_output['commitment_loss'],
-                            'train/perplexity': vq_output['perplexity']}, 
-                            prog_bar=True, logger=True, on_step=True, on_epoch=True, sync_dist=True,
-                            batch_size=self.args.batch_size)
+                self.log_dict({'train/logits_image_fake': logits_image_fake.mean().detach(),
+                                'train/logits_video_fake': logits_video_fake.mean().detach(),
+                                'train/g_image_loss': g_image_loss,
+                                'train/g_video_loss': g_video_loss,
+                                'train/image_gan_feat_loss': image_gan_feat_loss,
+                                'train/video_gan_feat_loss': video_gan_feat_loss,
+                                'train/perceptual_loss': perceptual_loss,
+                                'train/recon_loss': recon_loss,
+                                'train/aeloss': aeloss,
+                                'train/commitment_loss': vq_output['commitment_loss'],
+                                'train/perplexity': vq_output['perplexity']}, 
+                                prog_bar=True, logger=True, on_step=True, on_epoch=True, sync_dist=True,
+                                batch_size=self.args.batch_size)
 
-            return recon_loss, x_recon, vq_output, aeloss, perceptual_loss, gan_feat_loss
+                return recon_loss, x_recon, vq_output, aeloss, perceptual_loss, gan_feat_loss
 
-        if batch_idx is not None and batch_idx % 2 == 1:
-            # discriminator
-            logits_image_real, _ = self.image_discriminator(frames.detach())
-            logits_video_real, _ = self.video_discriminator(x.detach())
+            if opt_stage == 1: # discriminator
+                logits_image_real, _ = self.image_discriminator(frames.detach())
+                logits_video_real, _ = self.video_discriminator(x.detach())
 
-            logits_image_fake, _ = self.image_discriminator(frames_recon.detach())
-            logits_video_fake, _ = self.video_discriminator(x_recon.detach())
+                logits_image_fake, _ = self.image_discriminator(frames_recon.detach())
+                logits_video_fake, _ = self.video_discriminator(x_recon.detach())
 
-            d_image_loss = self.disc_loss(logits_image_real, logits_image_fake)
-            d_video_loss = self.disc_loss(logits_video_real, logits_video_fake)
-            disc_factor = adopt_weight(self.global_step, threshold=self.args.discriminator_iter_start)
-            discloss = disc_factor * (self.image_gan_weight*d_image_loss + self.video_gan_weight*d_video_loss)
+                d_image_loss = self.disc_loss(logits_image_real, logits_image_fake)
+                d_video_loss = self.disc_loss(logits_video_real, logits_video_fake)
+                disc_factor = adopt_weight(self.global_step, threshold=self.args.discriminator_iter_start)
+                discloss = disc_factor * (self.image_gan_weight*d_image_loss + self.video_gan_weight*d_video_loss)
 
-            self.log_dict({'train/logits_image_real': logits_image_real.mean().detach(),
-                            'train/logits_image_fake': logits_image_fake.mean().detach(),
-                            'train/logits_video_real': logits_video_real.mean().detach(),
-                            'train/logits_video_fake': logits_video_fake.mean().detach(),
-                            'train/d_image_loss': d_image_loss,
-                            'train/d_video_loss': d_video_loss,
-                            'train/discloss': discloss},
-                            prog_bar=True, logger=True, on_step=True, on_epoch=True, sync_dist=True,
-                            batch_size=self.args.batch_size)
+                self.log_dict({'train/logits_image_real': logits_image_real.mean().detach(),
+                                'train/logits_image_fake': logits_image_fake.mean().detach(),
+                                'train/logits_video_real': logits_video_real.mean().detach(),
+                                'train/logits_video_fake': logits_video_fake.mean().detach(),
+                                'train/d_image_loss': d_image_loss,
+                                'train/d_video_loss': d_video_loss,
+                                'train/discloss': discloss},
+                                prog_bar=True, logger=True, on_step=True, on_epoch=True, sync_dist=True,
+                                batch_size=self.args.batch_size)
 
-            return discloss
+                return discloss
 
-        perceptual_loss = self.perceptual_model(frames, frames_recon).mean() * self.perceptual_weight
-        return recon_loss, x_recon, vq_output, perceptual_loss
+        else: # opt_stage is None, i.e., validation
+            perceptual_loss = self.perceptual_model(frames, frames_recon).mean() * self.perceptual_weight
+            return recon_loss, x_recon, vq_output, perceptual_loss
 
     def training_step(self, batch, batch_idx):
         opt_ae, opt_disc = self.optimizers()
         x = batch['video']
 
-        if batch_idx % 2 == 0:
-            recon_loss, _, vq_output, aeloss, perceptual_loss, gan_feat_loss = self.forward(batch_idx, x)
-            commitment_loss = vq_output['commitment_loss']
-            loss_ae = recon_loss + commitment_loss + aeloss + perceptual_loss + gan_feat_loss
-            opt_ae.zero_grad()
-            self.manual_backward(loss_ae)
-            opt_ae.step()
-        elif batch_idx % 2 == 1:
-            discloss = self.forward(batch_idx, x)
-            loss = discloss
-            opt_disc.zero_grad()
-            self.manual_backward(loss)
-            opt_disc.step()
-        else:
-            assert False
+        recon_loss, _, vq_output, aeloss, perceptual_loss, gan_feat_loss = self.forward(x, opt_stage=0)
+        commitment_loss = vq_output['commitment_loss']
+        loss_ae = recon_loss + commitment_loss + aeloss + perceptual_loss + gan_feat_loss
+        opt_ae.zero_grad()
+        self.manual_backward(loss_ae)
+        opt_ae.step()
 
-        return loss
+        loss_disc = self.forward(x, opt_stage=1)
+        opt_disc.zero_grad()
+        self.manual_backward(loss_disc)
+        opt_disc.step()
+
 
     def validation_step(self, batch, batch_idx):
         x = batch['video']

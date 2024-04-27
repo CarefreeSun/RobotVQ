@@ -6,7 +6,8 @@ import pytorch_lightning as pl
 from pytorch_lightning.callbacks import ModelCheckpoint
 from tats import VQGANDeepSpeed, VideoData, get_image_video_dataloader
 from tats.modules.callbacks import ImageLogger, VideoLogger
-from pytorch_lightning.strategies import DeepSpeedStrategy
+from pytorch_lightning.strategies import DeepSpeedStrategy, DDPStrategy
+from pytorch_lightning.loggers import TensorBoardLogger
 # from tats.dataloader_img import get_image_video_dataloader
 
 
@@ -55,9 +56,9 @@ def main():
     parser.add_argument("--num_workers", type=int, default=1)
     parser.add_argument("--resolution", type=int, default=256)
     parser.add_argument('--image_channels', type=int, default=3)
-    parser.add_argument('--val_check_interval', type=int, default=25)
-    parser.add_argument('--log_interval', type=int, default=25)
-    parser.add_argument('--save_step_frequency', type=int, default=10)
+    parser.add_argument('--val_check_interval', type=int, default=250)
+    parser.add_argument('--log_interval', type=int, default=50)
+    parser.add_argument('--save_step_frequency', type=int, default=5000)
 
     args = parser.parse_args()
 
@@ -83,16 +84,25 @@ def main():
     class StepCheckpointCallback(pl.Callback):
         def __init__(self, args):
             self.save_step_frequency = args.save_step_frequency
+            self.log_interval = args.log_interval
             self.best_val_loss = float('inf')
 
         def on_train_batch_end(self, trainer, pl_module, outputs, batch, batch_idx):
-            print(trainer.global_step)
-            if trainer.global_step % self.save_step_frequency == 0:
-                filepath = os.path.join(trainer.default_root_dir, 'checkpoints', f"step_checkpoint-step_{trainer.global_step}.ckpt")
+            if (trainer.global_step // 2) % self.save_step_frequency == 0:
+                filepath = os.path.join(trainer.default_root_dir, 'checkpoints', f"step_checkpoint-step_{(trainer.global_step // 2)}.ckpt")
                 trainer.save_checkpoint(filepath)
                 # also save the latest checkpoint
                 filepath = os.path.join(trainer.default_root_dir, 'checkpoints', f"latest_checkpoint.ckpt")
                 trainer.save_checkpoint(filepath)
+                # save all callback metrics into a file
+            
+            if (trainer.global_step // 2) % self.log_interval == 0:
+                filepath = os.path.join(trainer.default_root_dir, f"train_metrics.txt")
+                with open(filepath, 'w') as f:
+                    for key, val in trainer.callback_metrics.items():
+                        if 'train/' in key:
+                            f.write(f"{key}: {val:.4f}\n")
+
         
         def on_validation_end(self, trainer: pl.Trainer, pl_module: pl.LightningModule) -> None:
             current_val_loss = trainer.callback_metrics['val/recon_loss']
@@ -100,6 +110,12 @@ def main():
                 self.best_val_loss = current_val_loss
                 filepath = os.path.join(trainer.default_root_dir, 'checkpoints', f"best_val_loss.ckpt")
                 trainer.save_checkpoint(filepath)
+            # save all callback metrics into a file
+            filepath = os.path.join(trainer.default_root_dir, f"eval_metrics.txt")
+            with open(filepath, 'w') as f:
+                for key, val in trainer.callback_metrics.items():
+                    if 'val/' in key:
+                        f.write(f"{key}: {val:.4f}\n")
 
     callbacks.append(ImageLogger(batch_frequency=200, max_images=4, clamp=True))
     callbacks.append(VideoLogger(batch_frequency=200, max_videos=4, clamp=True))
@@ -122,16 +138,19 @@ def main():
                 "will start from the recent ckpt %s" % args.resume_from_checkpoint
             )
 
+    logger = TensorBoardLogger(save_dir=args.default_root_dir, name="logs")
+
     trainer = pl.Trainer(
         callbacks=callbacks,
         val_check_interval=args.val_check_interval,
         default_root_dir=args.default_root_dir,
         accelerator="gpu",
+        strategy=DDPStrategy(find_unused_parameters=True), # training GAN with DDP
         devices=args.devices,
         num_nodes=args.nodes,
+        logger=logger,
         log_every_n_steps=args.log_interval,
-        strategy='ddp',
-        precision='16-mixed',
+        precision='32',
         max_steps=args.max_steps,
         sync_batchnorm=True,
     )
