@@ -126,7 +126,6 @@ class VQGANDeepSpeed(pl.LightningModule):
             disc_factor = adopt_weight(self.global_step, threshold=self.args.discriminator_iter_start)
             aeloss = disc_factor * g_loss
 
-
             # gan feature matching loss
             image_gan_feat_loss = 0
             video_gan_feat_loss = 0
@@ -187,14 +186,25 @@ class VQGANDeepSpeed(pl.LightningModule):
         return recon_loss, x_recon, vq_output, perceptual_loss
 
     def training_step(self, batch, batch_idx):
+        opt_ae, opt_disc = self.optimizers()
         x = batch['video']
+
         if batch_idx % 2 == 0:
-            recon_loss, _, vq_output, aeloss, perceptual_loss, gan_feat_loss = self.forward(x, batch_idx)
+            recon_loss, _, vq_output, aeloss, perceptual_loss, gan_feat_loss = self.forward(batch_idx, x)
             commitment_loss = vq_output['commitment_loss']
-            loss = recon_loss + commitment_loss + aeloss + perceptual_loss + gan_feat_loss
-        if batch_idx % 2 == 1:
-            discloss = self.forward(x, batch_idx)
+            loss_ae = recon_loss + commitment_loss + aeloss + perceptual_loss + gan_feat_loss
+            opt_ae.zero_grad()
+            self.manual_backward(loss_ae)
+            opt_ae.step()
+        elif batch_idx % 2 == 1:
+            discloss = self.forward(batch_idx, x)
             loss = discloss
+            opt_disc.zero_grad()
+            self.manual_backward(loss)
+            opt_disc.step()
+        else:
+            assert False
+
         return loss
 
     def validation_step(self, batch, batch_idx):
@@ -209,7 +219,6 @@ class VQGANDeepSpeed(pl.LightningModule):
         
     def configure_optimizers(self):
 
-        lr = self.args.lr
         opt_ae = torch.optim.Adam(list(self.encoder.parameters())+
                                   list(self.decoder.parameters())+
                                   list(self.pre_vq_conv.parameters())+

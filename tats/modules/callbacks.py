@@ -26,7 +26,6 @@ class ImageLogger(Callback):
     def log_local(self, save_dir, split, images,
                   global_step, current_epoch, batch_idx):
         root = os.path.join(save_dir, "images", split)
-        print(root)
         for k in images:
             grid = torchvision.utils.make_grid(images[k], nrow=4)
 
@@ -104,7 +103,6 @@ class VideoLogger(Callback):
     def log_local(self, save_dir, split, videos,
                   global_step, current_epoch, batch_idx):
         root = os.path.join(save_dir, "videos", split)
-        print(root)
         for k in videos:
             grid = videos[k] + 0.5
             filename = "{}_gs-{:06}_e-{:06}_b-{:06}.mp4".format(

@@ -20,6 +20,7 @@ def main():
     parser.add_argument("--devices", type=int, default=8, help="e.g., gpu number")
     parser.add_argument("--default_root_dir", type=str, default="logs/debug")
     parser.add_argument("--max_steps", type=int, default=500000, help="max_steps")
+    parser.add_argument("--resume_from_checkpoint", type=str, default=None, help="resume from checkpoint")
 
     # model args
     parser.add_argument('--embedding_dim', type=int, default=256)
@@ -50,11 +51,13 @@ def main():
         "--dataroot", type=str, default="/mnt/data-rundong/TATS/data_lists"
     )
     parser.add_argument("--sequence_length", type=int, default=4)
-    parser.add_argument("--batch_size", type=int, default=12)
+    parser.add_argument("--batch_size", type=int, default=2)
     parser.add_argument("--num_workers", type=int, default=1)
     parser.add_argument("--resolution", type=int, default=256)
     parser.add_argument('--image_channels', type=int, default=3)
-    parser.add_argument('--val_check_interval', type=int, default=50)
+    parser.add_argument('--val_check_interval', type=int, default=25)
+    parser.add_argument('--log_interval', type=int, default=25)
+    parser.add_argument('--save_step_frequency', type=int, default=10)
 
     args = parser.parse_args()
 
@@ -77,49 +80,48 @@ def main():
 
     callbacks = []
 
-    # callbacks.append(
-    #     ModelCheckpoint(
-    #         dirpath=os.path.join("/mnt/azureml/cr/j/a1676985721d4bab8f6ad0575e757079_2/exe/wd/TATS"),
-    #         monitor="val/recon_loss",
-    #         save_top_k=1,
-    #         filename="{epoch}-{step}-{val/recon_loss:.2f}_best",
-    #     )
-    # )
+    class StepCheckpointCallback(pl.Callback):
+        def __init__(self, args):
+            self.save_step_frequency = args.save_step_frequency
+            self.best_val_loss = float('inf')
 
-    callbacks.append(
-        ModelCheckpoint(
-            dirpath=os.path.join("/mnt/azureml/cr/j/a1676985721d4bab8f6ad0575e757079_2/exe/wd/TATS"),
-            monitor="step",
-            every_n_train_steps=1,
-            save_top_k=-1,
-            filename="{step}_checkpoint",
-        )
-    )
+        def on_train_batch_end(self, trainer, pl_module, outputs, batch, batch_idx):
+            print(trainer.global_step)
+            if trainer.global_step % self.save_step_frequency == 0:
+                filepath = os.path.join(trainer.default_root_dir, 'checkpoints', f"step_checkpoint-step_{trainer.global_step}.ckpt")
+                trainer.save_checkpoint(filepath)
+                # also save the latest checkpoint
+                filepath = os.path.join(trainer.default_root_dir, 'checkpoints', f"latest_checkpoint.ckpt")
+                trainer.save_checkpoint(filepath)
+        
+        def on_validation_end(self, trainer: pl.Trainer, pl_module: pl.LightningModule) -> None:
+            current_val_loss = trainer.callback_metrics['val/recon_loss']
+            if current_val_loss < self.best_val_loss:
+                self.best_val_loss = current_val_loss
+                filepath = os.path.join(trainer.default_root_dir, 'checkpoints', f"best_val_loss.ckpt")
+                trainer.save_checkpoint(filepath)
 
-    # callbacks.append(ImageLogger(batch_frequency=200, max_images=4, clamp=True))
-    # callbacks.append(VideoLogger(batch_frequency=200, max_videos=4, clamp=True))
+    callbacks.append(ImageLogger(batch_frequency=200, max_images=4, clamp=True))
+    callbacks.append(VideoLogger(batch_frequency=200, max_videos=4, clamp=True))
+    callbacks.append(StepCheckpointCallback(args))
 
     # load the most recent checkpoint file
-    base_dir = os.path.join(args.default_root_dir, "lightning_logs")
+    # base_dir = os.path.join(args.default_root_dir, "lightning_logs")
     checkpoint_dir = os.path.join(args.default_root_dir, "checkpoints")
     os.makedirs(checkpoint_dir, exist_ok=True)
     if len(os.listdir(checkpoint_dir)) > 0:
-        for fn in os.listdir(checkpoint_dir):
-            if fn == "latest_checkpoint.ckpt":
-                ckpt_file = "latest_checkpoint_prev.ckpt"
-                os.rename(
-                    os.path.join(checkpoint_dir, fn),
-                    os.path.join(checkpoint_dir, ckpt_file),
-                )
-        if ckpt_file != "":
+        fn = "latest_checkpoint.ckpt"
+        if fn in os.listdir(checkpoint_dir):
+            ckpt_file = "latest_checkpoint_prev.ckpt"
+            os.rename(
+                os.path.join(checkpoint_dir, fn),
+                os.path.join(checkpoint_dir, ckpt_file),
+            )
             args.resume_from_checkpoint = os.path.join(checkpoint_dir, ckpt_file)
             print(
                 "will start from the recent ckpt %s" % args.resume_from_checkpoint
             )
 
-    # strategy = DeepSpeedStrategy(
-    #     stage=2, offload_optimizer=True, cpu_checkpointing=True
-    # )
     trainer = pl.Trainer(
         callbacks=callbacks,
         val_check_interval=args.val_check_interval,
@@ -127,9 +129,8 @@ def main():
         accelerator="gpu",
         devices=args.devices,
         num_nodes=args.nodes,
-        log_every_n_steps=10,
+        log_every_n_steps=args.log_interval,
         strategy='ddp',
-        # strategy=strategy,
         precision='16-mixed',
         max_steps=args.max_steps,
         sync_batchnorm=True,
@@ -137,7 +138,8 @@ def main():
 
     trainer.fit(model, 
                 train_dataloaders=train_dataloader, 
-                val_dataloaders=test_dataloader)
+                val_dataloaders=test_dataloader,
+                ckpt_path=args.resume_from_checkpoint)
 
 
 if __name__ == "__main__":
