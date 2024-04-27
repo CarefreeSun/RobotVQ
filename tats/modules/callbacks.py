@@ -12,7 +12,7 @@ from pytorch_lightning.utilities.rank_zero import rank_zero_only
 from ..utils import save_video_grid
 
 class ImageLogger(Callback):
-    def __init__(self, batch_frequency, max_images, clamp=True, increase_log_steps=True):
+    def __init__(self, batch_frequency, max_images, clamp=True, increase_log_steps=False):
         super().__init__()
         self.batch_freq = batch_frequency
         self.max_images = max_images
@@ -90,7 +90,7 @@ class ImageLogger(Callback):
 
 
 class VideoLogger(Callback):
-    def __init__(self, batch_frequency, max_videos, clamp=True, increase_log_steps=True):
+    def __init__(self, batch_frequency, max_videos, clamp=True, increase_log_steps=False):
         super().__init__()
         self.batch_freq = batch_frequency
         self.max_videos = max_videos

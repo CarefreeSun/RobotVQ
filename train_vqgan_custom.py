@@ -76,36 +76,28 @@ def main():
     model = VQGANDeepSpeed(args)
 
     callbacks = []
-    callbacks.append(
-        ModelCheckpoint(
-            dirpath=os.path.join(args.default_root_dir, "checkpoints"),
-            monitor="val/recon_loss",
-            save_top_k=3,
-            mode="min",
-            filename="latest_checkpoint",
-        )
-    )
-    callbacks.append(
-        ModelCheckpoint(
-            dirpath=os.path.join(args.default_root_dir, "checkpoints"),
-            every_n_train_steps=30,
-            save_top_k=-1,
-            filename="{epoch}-{step}-{train/recon_loss:.2f}",
-        )
-    )
-    callbacks.append(
-        ModelCheckpoint(
-            dirpath=os.path.join(args.default_root_dir, "checkpoints"),
-            every_n_train_steps=10000,
-            save_top_k=-1,
-            filename="{epoch}-{step}-10000-{train/recon_loss:.2f}",
-        )
-    )
-    callbacks.append(ImageLogger(batch_frequency=200, max_images=4, clamp=True))
-    callbacks.append(VideoLogger(batch_frequency=200, max_videos=4, clamp=True))
 
-    print(callbacks)
-    print(args.default_root_dir)
+    # callbacks.append(
+    #     ModelCheckpoint(
+    #         dirpath=os.path.join("/mnt/azureml/cr/j/a1676985721d4bab8f6ad0575e757079_2/exe/wd/TATS"),
+    #         monitor="val/recon_loss",
+    #         save_top_k=1,
+    #         filename="{epoch}-{step}-{val/recon_loss:.2f}_best",
+    #     )
+    # )
+
+    callbacks.append(
+        ModelCheckpoint(
+            dirpath=os.path.join("/mnt/azureml/cr/j/a1676985721d4bab8f6ad0575e757079_2/exe/wd/TATS"),
+            monitor="step",
+            every_n_train_steps=1,
+            save_top_k=-1,
+            filename="{step}_checkpoint",
+        )
+    )
+
+    # callbacks.append(ImageLogger(batch_frequency=200, max_images=4, clamp=True))
+    # callbacks.append(VideoLogger(batch_frequency=200, max_videos=4, clamp=True))
 
     # load the most recent checkpoint file
     base_dir = os.path.join(args.default_root_dir, "lightning_logs")
