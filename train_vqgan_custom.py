@@ -78,6 +78,7 @@ def main():
     callbacks = []
     callbacks.append(
         ModelCheckpoint(
+            dirpath=os.path.join(args.default_root_dir, "checkpoints"),
             monitor="val/recon_loss",
             save_top_k=3,
             mode="min",
@@ -86,13 +87,15 @@ def main():
     )
     callbacks.append(
         ModelCheckpoint(
-            every_n_train_steps=3000,
+            dirpath=os.path.join(args.default_root_dir, "checkpoints"),
+            every_n_train_steps=30,
             save_top_k=-1,
             filename="{epoch}-{step}-{train/recon_loss:.2f}",
         )
     )
     callbacks.append(
         ModelCheckpoint(
+            dirpath=os.path.join(args.default_root_dir, "checkpoints"),
             every_n_train_steps=10000,
             save_top_k=-1,
             filename="{epoch}-{step}-10000-{train/recon_loss:.2f}",
@@ -101,30 +104,26 @@ def main():
     callbacks.append(ImageLogger(batch_frequency=200, max_images=4, clamp=True))
     callbacks.append(VideoLogger(batch_frequency=200, max_videos=4, clamp=True))
 
+    print(callbacks)
+    print(args.default_root_dir)
+
     # load the most recent checkpoint file
-    # base_dir = os.path.join(args.default_root_dir, "lightning_logs")
-    # if os.path.exists(base_dir):
-    #     log_folder = ckpt_file = ""
-    #     version_id_used = step_used = 0
-    #     for folder in os.listdir(base_dir):
-    #         version_id = int(folder.split("_")[1])
-    #         if version_id > version_id_used:
-    #             version_id_used = version_id
-    #             log_folder = folder
-    #     if len(log_folder) > 0:
-    #         ckpt_folder = os.path.join(base_dir, log_folder, "checkpoints")
-    #         for fn in os.listdir(ckpt_folder):
-    #             if fn == "latest_checkpoint.ckpt":
-    #                 ckpt_file = "latest_checkpoint_prev.ckpt"
-    #                 os.rename(
-    #                     os.path.join(ckpt_folder, fn),
-    #                     os.path.join(ckpt_folder, ckpt_file),
-    #                 )
-    #         if len(ckpt_file) > 0:
-    #             args.resume_from_checkpoint = os.path.join(ckpt_folder, ckpt_file)
-    #             print(
-    #                 "will start from the recent ckpt %s" % args.resume_from_checkpoint
-    #             )
+    base_dir = os.path.join(args.default_root_dir, "lightning_logs")
+    checkpoint_dir = os.path.join(args.default_root_dir, "checkpoints")
+    os.makedirs(checkpoint_dir, exist_ok=True)
+    if len(os.listdir(checkpoint_dir)) > 0:
+        for fn in os.listdir(checkpoint_dir):
+            if fn == "latest_checkpoint.ckpt":
+                ckpt_file = "latest_checkpoint_prev.ckpt"
+                os.rename(
+                    os.path.join(checkpoint_dir, fn),
+                    os.path.join(checkpoint_dir, ckpt_file),
+                )
+        if ckpt_file != "":
+            args.resume_from_checkpoint = os.path.join(checkpoint_dir, ckpt_file)
+            print(
+                "will start from the recent ckpt %s" % args.resume_from_checkpoint
+            )
 
     # strategy = DeepSpeedStrategy(
     #     stage=2, offload_optimizer=True, cpu_checkpointing=True
