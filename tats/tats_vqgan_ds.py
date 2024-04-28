@@ -228,7 +228,7 @@ class VQGANDeepSpeed(pl.LightningModule):
     def log_images(self, batch, **kwargs):
         log = dict()
         x = batch['video']
-        x = x.to(self.device)
+        # x = x.to(self.device)
         frames, frames_rec, _, _ = self(x, log_image=True)
         log["inputs"] = frames
         log["reconstructions"] = frames_rec
