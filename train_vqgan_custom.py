@@ -4,11 +4,11 @@ import os
 import argparse
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import ModelCheckpoint
-from tats import VQGANDeepSpeed, VideoData, get_image_video_dataloader
+from tats import VQGANDeepSpeed, VideoData, get_image_dataloader
 from tats.modules.callbacks import ImageLogger, VideoLogger
 from pytorch_lightning.strategies import DeepSpeedStrategy, DDPStrategy
 from pytorch_lightning.loggers import TensorBoardLogger
-# from tats.dataloader_img import get_image_video_dataloader
+# from tats.dataloader_img import get_image_dataloader
 
 
 def main():
@@ -72,8 +72,8 @@ def main():
     except:
         pass
 
-    train_dataloader = get_image_video_dataloader(args, split='train')
-    test_dataloader = get_image_video_dataloader(args, split='test')
+    train_dataloader = get_image_dataloader(args, split='train')
+    test_dataloader = get_image_dataloader(args, split='test')
 
     args.lr = args.lr * args.nodes * args.devices / 8.0 * args.batch_size / 4.0
 
