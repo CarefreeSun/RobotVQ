@@ -20,7 +20,7 @@ def main():
     parser.add_argument("--nodes", type=int, default=1, help="nodes")
     parser.add_argument("--devices", type=int, default=8, help="e.g., gpu number")
     parser.add_argument("--default_root_dir", type=str, default="logs/debug")
-    parser.add_argument("--max_steps", type=int, default=200000, help="max_steps")
+    parser.add_argument("--max_steps", type=int, default=300000, help="max_steps")
     parser.add_argument("--resume_from_checkpoint", type=str, default=None, help="resume from checkpoint")
 
     # model args
@@ -51,8 +51,8 @@ def main():
     parser.add_argument(
         "--dataroot", type=str, default="/mnt/data-rundong/TATS/data_lists"
     )
-    parser.add_argument("--sequence_length", type=int, default=4)
-    parser.add_argument("--batch_size", type=int, default=6)
+    parser.add_argument("--sequence_length", type=int, default=6)
+    parser.add_argument("--batch_size", type=int, default=4)
     parser.add_argument("--num_workers", type=int, default=1)
     parser.add_argument("--resolution", type=int, default=256)
     parser.add_argument('--image_channels', type=int, default=3)
@@ -126,17 +126,18 @@ def main():
     checkpoint_dir = os.path.join(args.default_root_dir, "checkpoints")
     os.makedirs(checkpoint_dir, exist_ok=True)
     if len(os.listdir(checkpoint_dir)) > 0:
-        fn = "latest_checkpoint.ckpt"
-        if fn in os.listdir(checkpoint_dir):
-            ckpt_file = "latest_checkpoint_prev.ckpt"
-            os.rename(
-                os.path.join(checkpoint_dir, fn),
-                os.path.join(checkpoint_dir, ckpt_file),
-            )
-            args.resume_from_checkpoint = os.path.join(checkpoint_dir, ckpt_file)
-            print(
-                "will start from the recent ckpt %s" % args.resume_from_checkpoint
-            )
+        # fn = "latest_checkpoint.ckpt"
+        # if fn in os.listdir(checkpoint_dir):
+        #     ckpt_file = "latest_checkpoint_prev.ckpt"
+        #     os.rename(
+        #         os.path.join(checkpoint_dir, fn),
+        #         os.path.join(checkpoint_dir, ckpt_file),
+        #     )
+        args.resume_from_checkpoint = os.path.join(checkpoint_dir, "latest_checkpoint.ckpt")
+        assert os.path.exists(args.resume_from_checkpoint)
+        print(
+            "will start from the recent ckpt %s" % args.resume_from_checkpoint
+        )
 
     logger = TensorBoardLogger(save_dir=args.default_root_dir, name="logs")
 
