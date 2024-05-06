@@ -20,7 +20,7 @@ def main():
     parser.add_argument("--nodes", type=int, default=1, help="nodes")
     parser.add_argument("--devices", type=int, default=8, help="e.g., gpu number")
     parser.add_argument("--default_root_dir", type=str, default="logs/debug")
-    parser.add_argument("--max_steps", type=int, default=500000, help="max_steps")
+    parser.add_argument("--max_steps", type=int, default=200000, help="max_steps")
     parser.add_argument("--resume_from_checkpoint", type=str, default=None, help="resume from checkpoint")
 
     # model args
