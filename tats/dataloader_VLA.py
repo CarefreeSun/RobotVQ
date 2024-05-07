@@ -72,11 +72,11 @@ class ImageActionDataset(Dataset):
             img = self.transform(img)
             video.append(img)
             if i != start + self.length - 1 and self.action:
-                actions.append(data['actions'])
+                actions.append(data['actions'][i])
         ret = {}
         ret['video'] = torch.stack(video).permute(1, 0, 2, 3) # (C, T, H, W)
         if self.action:
-            ret['actions'] = torch.tensor(actions)
+            ret['actions'] = torch.tensor(actions) # (T-1, 7), 7 is the number of action dimension
         return ret
 
         # key = self.keys[index]

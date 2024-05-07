@@ -208,15 +208,16 @@ class VQGANVisionAction(pl.LightningModule):
     def training_step(self, batch, batch_idx):
         opt_ae, opt_disc = self.optimizers()
         x = batch['video']
+        x_action = batch['actions']
 
-        recon_loss, recon_loss_action, _, vq_output, aeloss, perceptual_loss, gan_feat_loss = self.forward(x, opt_stage=0)
+        recon_loss, recon_loss_action, _, vq_output, aeloss, perceptual_loss, gan_feat_loss = self.forward(x, x_action, opt_stage=0)
         commitment_loss = vq_output['commitment_loss']
         loss_ae = recon_loss + recon_loss_action + commitment_loss + aeloss + perceptual_loss + gan_feat_loss
         opt_ae.zero_grad()
         self.manual_backward(loss_ae)
         opt_ae.step()
 
-        loss_disc = self.forward(x, opt_stage=1)
+        loss_disc = self.forward(x, x_action, opt_stage=1)
         opt_disc.zero_grad()
         self.manual_backward(loss_disc)
         opt_disc.step()
@@ -224,7 +225,7 @@ class VQGANVisionAction(pl.LightningModule):
 
     def validation_step(self, batch, batch_idx):
         x = batch['video']
-        x_action = batch['action']
+        x_action = batch['actions']
         recon_loss, recon_loss_action, _, vq_output, perceptual_loss = self.forward(x, x_action)
         self.log_dict({'val/recon_loss': recon_loss,
                        'val/recon_loss_action': recon_loss_action,
@@ -253,7 +254,7 @@ class VQGANVisionAction(pl.LightningModule):
     def log_images(self, batch, **kwargs):
         log = dict()
         x = batch['video']
-        x_action = batch['action']
+        x_action = batch['actions']
         frames, frames_rec, _, _ = self(x, x_action, log_image=True)
         log["inputs"] = frames
         log["reconstructions"] = frames_rec
@@ -262,7 +263,7 @@ class VQGANVisionAction(pl.LightningModule):
     def log_videos(self, batch, **kwargs):
         log = dict()
         x = batch['video']
-        x_action = batch['action']
+        x_action = batch['actions']
         _, _, x, x_rec = self(x, x_action, log_image=True)
         log["inputs"] = x
         log["reconstructions"] = x_rec
