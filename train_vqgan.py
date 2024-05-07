@@ -85,6 +85,8 @@ def main():
             self.save_step_frequency = args.save_step_frequency
             self.log_interval = args.log_interval
             self.best_val_loss = float('inf')
+            self.train_log = open(os.path.join(args.default_root_dir, "train_metrics.txt"), "w")
+            self.eval_log = open(os.path.join(args.default_root_dir, "eval_metrics.txt"), "w")
 
         def on_train_batch_end(self, trainer, pl_module, outputs, batch, batch_idx):
             if (trainer.global_step // 2) % self.save_step_frequency == 0:
@@ -96,12 +98,16 @@ def main():
                 # save all callback metrics into a file
             
             if (trainer.global_step // 2) % self.log_interval == 0:
-                filepath = os.path.join(trainer.default_root_dir, f"train_metrics.txt")
-                with open(filepath, 'w') as f:
-                    for key, val in trainer.callback_metrics.items():
-                        if 'train/' in key:
-                            f.write(f"{key}: {val:.4f}\n")
+                self.train_log.write(f"Training at step {trainer.global_step // 2}\n")
+                for key, val in trainer.callback_metrics.items():
+                    self.train_log.write(f"{key}: {val:.4f}\t")
+                self.train_log.flush()
 
+        def on_train_epoch_end(self, trainer: pl.Trainer, pl_module: pl.LightningModule) -> None:
+            self.train_log.write(f"Training at epoch {trainer.current_epoch}\n")
+            for key, val in trainer.callback_metrics.items():
+                self.train_log.write(f"{key}: {val:.4f}\t")
+            self.train_log.flush()
         
         def on_validation_end(self, trainer: pl.Trainer, pl_module: pl.LightningModule) -> None:
             current_val_loss = trainer.callback_metrics['val/recon_loss']
@@ -110,11 +116,10 @@ def main():
                 filepath = os.path.join(trainer.default_root_dir, 'checkpoints', f"best_val_loss.ckpt")
                 trainer.save_checkpoint(filepath)
             # save all callback metrics into a file
-            filepath = os.path.join(trainer.default_root_dir, f"eval_metrics.txt")
-            with open(filepath, 'w') as f:
-                for key, val in trainer.callback_metrics.items():
-                    if 'val/' in key:
-                        f.write(f"{key}: {val:.4f}\n")
+            self.eval_log.write(f"Validation at step {trainer.global_step // 2}\n")
+            for key, val in trainer.callback_metrics.items():
+                self.eval_log.write(f"{key}: {val:.4f}\t")
+            self.eval_log.flush()
 
     callbacks.append(ImageLogger(batch_frequency=200, max_images=4, clamp=True))
     callbacks.append(VideoLogger(batch_frequency=200, max_videos=4, clamp=True))
