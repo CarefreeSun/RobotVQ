@@ -16,7 +16,7 @@ class ImageActionDataset(Dataset):
     def __init__(self, args, action=False, split='train', transform=None):
         self.root = args.dataroot
         if transform is None:
-            transform = transforms.Compose([
+            self.transform = transforms.Compose([
                 transforms.Resize((args.resolution, args.resolution)),
                 transforms.ToTensor(),
                 transforms.Normalize((0.5, 0.5, 0.5), (1., 1., 1.)) # To [-0.5, 0.5]
@@ -37,7 +37,7 @@ class ImageActionDataset(Dataset):
                 img0 = instance_data['images'][0]
                 prefix = os.path.join(*img0.split('/')[:-1])
                 filename_prefix, scene_id, frame_id, view_id = img0.split('/')[-1].split('.')[0].split('_')
-                instance_format = prefix + '/' + filename_prefix + '_' + str(scene_id) + '_{}_' + view_id
+                instance_format = '/' + prefix + '/' + filename_prefix + '_' + str(scene_id) + '_{}_' + view_id + '.png'
                 new_instance = {'image_paths': instance_format, 'frame_number': num_frames}
                 if self.action:
                     new_instance['actions'] = instance_data['actions']
@@ -60,7 +60,7 @@ class ImageActionDataset(Dataset):
         # self.keys = [key for key in self.keys if len(self.filenames[key]) >= self.length]
 
     def __len__(self):
-        return len(self.keys)
+        return len(self.filenames)
     
     def __getitem__(self, index):
 
@@ -70,7 +70,7 @@ class ImageActionDataset(Dataset):
         actions = []
         for i in range(start, start + self.length):
             img_filename = data['image_paths'].format(i)
-            img = Image.open(os.path.join(self.root, img_filename))
+            img = Image.open(img_filename)
             img = self.transform(img)
             video.append(img)
             if i != start + self.length - 1 and self.action:

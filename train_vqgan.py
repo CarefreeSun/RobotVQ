@@ -19,13 +19,13 @@ def main():
     # trainer args
     parser.add_argument("--nodes", type=int, default=1, help="nodes")
     parser.add_argument("--devices", type=int, default=8, help="e.g., gpu number")
-    parser.add_argument("--default_root_dir", type=str, default="logs/debug")
+    parser.add_argument("--default_root_dir", type=str, default="logs/debug-2")
     parser.add_argument("--max_steps", type=int, default=100000, help="max_steps")
     parser.add_argument("--resume_from_checkpoint", type=str, default=None, help="resume from checkpoint")
 
     # model args
     parser.add_argument('--embedding_dim', type=int, default=256)
-    parser.add_argument('--n_codes', type=int, default=2048)
+    parser.add_argument('--n_codes', type=int, default=16384)
     parser.add_argument('--n_hiddens', type=int, default=32)
     parser.add_argument('--lr', type=float, default=3e-5)
     parser.add_argument('--downsample', nargs='+', type=int, default=(2, 16, 16))
@@ -49,7 +49,7 @@ def main():
 
     # data args
     parser.add_argument(
-        "--dataroot", type=str, default="/mnt/data-rundong/TATS/data_lists"
+        "--dataroot", type=str, default="/mnt/data-rundong/bridge2/gpt4v"
     )
     parser.add_argument("--sequence_length", type=int, default=6)
     parser.add_argument("--batch_size", type=int, default=4)
