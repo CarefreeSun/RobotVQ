@@ -4,7 +4,7 @@ import os
 import argparse
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import ModelCheckpoint
-from tats import VQGANDeepSpeed, VideoData, get_image_dataloader
+from tats import VQGANDeepSpeed, VideoData, get_image_action_dataloader
 from tats.modules.callbacks import ImageLogger, VideoLogger
 from pytorch_lightning.strategies import DeepSpeedStrategy, DDPStrategy
 from pytorch_lightning.loggers import TensorBoardLogger
@@ -72,8 +72,8 @@ def main():
     except:
         pass
 
-    train_dataloader = get_image_dataloader(args, split='train')
-    test_dataloader = get_image_dataloader(args, split='test')
+    train_dataloader = get_image_action_dataloader(args, split='train', action=False)
+    test_dataloader = get_image_action_dataloader(args, split='test', action=False)
 
     args.lr = args.lr * args.nodes * args.devices / 8.0 * args.batch_size / 4.0
 
@@ -126,13 +126,6 @@ def main():
     checkpoint_dir = os.path.join(args.default_root_dir, "checkpoints")
     os.makedirs(checkpoint_dir, exist_ok=True)
     if len(os.listdir(checkpoint_dir)) > 0:
-        # fn = "latest_checkpoint.ckpt"
-        # if fn in os.listdir(checkpoint_dir):
-        #     ckpt_file = "latest_checkpoint_prev.ckpt"
-        #     os.rename(
-        #         os.path.join(checkpoint_dir, fn),
-        #         os.path.join(checkpoint_dir, ckpt_file),
-        #     )
         args.resume_from_checkpoint = os.path.join(checkpoint_dir, "latest_checkpoint.ckpt")
         assert os.path.exists(args.resume_from_checkpoint)
         print(
