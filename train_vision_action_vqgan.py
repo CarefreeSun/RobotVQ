@@ -87,7 +87,7 @@ def main():
             self.save_step_frequency = args.save_step_frequency
             self.log_interval = args.log_interval
             self.best_val_loss = float('inf')
-            os.path.makedirs(args.default_root_dir, exist_ok=True)
+            os.makedirs(args.default_root_dir, exist_ok=True)
             self.train_log = open(os.path.join(args.default_root_dir, "train_metrics.txt"), "w")
             self.eval_log = open(os.path.join(args.default_root_dir, "eval_metrics.txt"), "w")
 
