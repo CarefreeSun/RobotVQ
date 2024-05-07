@@ -14,7 +14,8 @@ class ImageActionDataset(Dataset):
     each time when calling __getitem__, we randomly sample a video clip from the dataset
     '''
     def __init__(self, args, action=False, split='train', transform=None):
-        self.root = args.dataroot
+        self.split_root = args.split_root
+        self.data_root = args.data_root
         if transform is None:
             self.transform = transforms.Compose([
                 transforms.Resize((args.resolution, args.resolution)),
@@ -28,17 +29,14 @@ class ImageActionDataset(Dataset):
         self.action = action
         self.filenames = []
 
-        with open(os.path.join(self.root, f'{split}.jsonl'), 'r') as f:
+        with open(os.path.join(self.split_root, f'{split}.jsonl'), 'r') as f:
             for line in f:
                 instance_data = json.loads(line)
                 num_frames = instance_data['frame_number']
                 if num_frames < self.length:
                     continue
-                img0 = instance_data['images'][0]
-                prefix = os.path.join(*img0.split('/')[:-1])
-                filename_prefix, scene_id, frame_id, view_id = img0.split('/')[-1].split('.')[0].split('_')
-                instance_format = '/' + prefix + '/' + filename_prefix + '_' + str(scene_id) + '_{}_' + view_id + '.png'
-                new_instance = {'image_paths': instance_format, 'frame_number': num_frames}
+                instance_format = args.data_root + '/outputimage_' + str(instance_data['trajectory_id']) + '_{}_' + str(instance_data['view']) + '.png'
+                new_instance = {'image_paths': instance_format, 'frame_number': num_frames, 'image_indices': instance_data['image_indices']}
                 if self.action:
                     new_instance['actions'] = instance_data['actions']
                 self.filenames.append(new_instance)
@@ -69,7 +67,7 @@ class ImageActionDataset(Dataset):
         video = []
         actions = []
         for i in range(start, start + self.length):
-            img_filename = data['image_paths'].format(i)
+            img_filename = data['image_paths'].format(data['image_indices'][i])
             img = Image.open(img_filename)
             img = self.transform(img)
             video.append(img)

@@ -31,7 +31,7 @@ def main():
     parser.add_argument('--downsample', nargs='+', type=int, default=(2, 16, 16))
     parser.add_argument('--disc_channels', type=int, default=64)
     parser.add_argument('--disc_layers', type=int, default=3)
-    parser.add_argument('--discriminator_iter_start', type=int, default=50000)
+    parser.add_argument('--discriminator_iter_start', type=int, default=10000)
     parser.add_argument('--disc_loss_type', type=str, default='hinge', choices=['hinge', 'vanilla'])
     parser.add_argument('--image_gan_weight', type=float, default=1.0)
     parser.add_argument('--video_gan_weight', type=float, default=1.0)
@@ -48,9 +48,8 @@ def main():
     parser.add_argument('--video_action_layers', type=int, default=3, help='number of action layers')
 
     # data args
-    parser.add_argument(
-        "--dataroot", type=str, default="/mnt/data-rundong/bridge2/gpt4v"
-    )
+    parser.add_argument("--split_root", type=str, default="/mnt/data-rundong/bridge2/gpt4v")
+    parser.add_argument("--data_root", type=str, default="/mnt/robotdata/bridge2/images_bridge")
     parser.add_argument("--sequence_length", type=int, default=6)
     parser.add_argument("--batch_size", type=int, default=4)
     parser.add_argument("--num_workers", type=int, default=1)
@@ -125,12 +124,8 @@ def main():
     # base_dir = os.path.join(args.default_root_dir, "lightning_logs")
     checkpoint_dir = os.path.join(args.default_root_dir, "checkpoints")
     os.makedirs(checkpoint_dir, exist_ok=True)
-    if len(os.listdir(checkpoint_dir)) > 0:
-        args.resume_from_checkpoint = os.path.join(checkpoint_dir, "latest_checkpoint.ckpt")
-        assert os.path.exists(args.resume_from_checkpoint)
-        print(
-            "will start from the recent ckpt %s" % args.resume_from_checkpoint
-        )
+    if os.path.exists(os.path.join(checkpoint_dir, "latest_checkpoint.ckpt")):
+        print(f"Resume from checkpoint {os.path.join(checkpoint_dir, 'latest_checkpoint.ckpt')}")
 
     logger = TensorBoardLogger(save_dir=args.default_root_dir, name="logs")
 
