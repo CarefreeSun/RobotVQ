@@ -102,12 +102,14 @@ def main():
                 self.train_log.write(f"Training at step {trainer.global_step // 2}\n")
                 for key, val in trainer.callback_metrics.items():
                     self.train_log.write(f"{key}: {val:.4f}\t")
+                self.train_log.write("\n")
                 self.train_log.flush()
 
         def on_train_epoch_end(self, trainer: pl.Trainer, pl_module: pl.LightningModule) -> None:
             self.train_log.write(f"Training at epoch {trainer.current_epoch}\n")
             for key, val in trainer.callback_metrics.items():
                 self.train_log.write(f"{key}: {val:.4f}\t")
+            self.train_log.write("\n")
             self.train_log.flush()
         
         def on_validation_end(self, trainer: pl.Trainer, pl_module: pl.LightningModule) -> None:

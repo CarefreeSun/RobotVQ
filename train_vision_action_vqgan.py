@@ -20,7 +20,7 @@ def main():
     # trainer args
     parser.add_argument("--nodes", type=int, default=1, help="nodes")
     parser.add_argument("--devices", type=int, default=8, help="e.g., gpu number")
-    parser.add_argument("--default_root_dir", type=str, default="logs/debug-vision-motor-vqgan")
+    parser.add_argument("--default_root_dir", type=str, default="logs/debug-vision-action-vqgan")
     parser.add_argument("--max_steps", type=int, default=100000, help="max_steps")
     parser.add_argument("--resume_from_checkpoint", type=str, default=None, help="resume from checkpoint")
     parser.add_argument("--load_vision_model", type=str, default=None, help="load vision model")
@@ -104,12 +104,14 @@ def main():
                 self.train_log.write(f"Training at step {trainer.global_step // 2}\n")
                 for key, val in trainer.callback_metrics.items():
                     self.train_log.write(f"{key}: {val:.4f}\t")
+                self.train_log.write("\n")
                 self.train_log.flush()
 
         def on_train_epoch_end(self, trainer: pl.Trainer, pl_module: pl.LightningModule) -> None:
             self.train_log.write(f"Training at epoch {trainer.current_epoch}\n")
             for key, val in trainer.callback_metrics.items():
                 self.train_log.write(f"{key}: {val:.4f}\t")
+            self.train_log.write("\n")
             self.train_log.flush()
         
         def on_validation_end(self, trainer: pl.Trainer, pl_module: pl.LightningModule) -> None:
