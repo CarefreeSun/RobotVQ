@@ -79,7 +79,7 @@ def main():
 
     args.lr = args.lr * math.sqrt(args.nodes * args.devices * args.batch_size)
 
-    model = VQGANDeepSpeed(args)
+    model = VQGANVision(args)
     if args.load_checkpoint is not None:
         state_dict = torch.load(args.load_checkpoint, map_location='cpu')['state_dict']
         load_result = model.load_state_dict(state_dict, strict=True)

@@ -1,7 +1,6 @@
 import os
 import argparse
-from tats import VideoData, get_image_action_dataloader
-import math
+from tats import VQGANVision, VQGANVisionAction
 import torch
 from tqdm import tqdm
 import json
@@ -43,7 +42,8 @@ def main():
                 default='/mnt/data-rundong/bridge2/gpt4v/train.json', 
                 help="source file path")
     parser.add_argument("--dst_filepath", type=str, 
-                default='/mnt/data-rundong/bridge2/gpt4v-tokenized-vision/train.json', 
+                # default='/mnt/data-rundong/bridge2/gpt4v-tokenized-vision/test.json', 
+                default='/mnt/azureml/cr/j/bb7e6396fa4f48349d1ad48f61053a77/exe/wd/gpt4v-tokenized-vision/test.json', 
                 help="destination file path")
     parser.add_argument("--sequence_length", type=int, default=6)
     parser.add_argument("--gpu_id", type=int, default=0)
@@ -58,20 +58,19 @@ def main():
 
     # prepare model
     if not args.tokenize_action:
-        from tats import VQGANVision
         model = VQGANVision(args)
     else:
-        from tats import VQGANVisionAction
         model = VQGANVisionAction(args)
 
     state_dict = torch.load(args.load_checkpoint, map_location='cpu')['state_dict']
-    load_result = model.load_state_dict(state_dict, strict=True)
+    model.load_state_dict(state_dict, strict=True)
 
     model = model.eval().to(device)
 
     json_filepath = args.src_filepath
     lines = open(json_filepath, 'r').readlines()
 
+    os.makedirs(os.path.dirname(args.dst_filepath), exist_ok=True)
     dst_file = open(args.dst_filepath, 'w')
 
     transform = transforms.Compose([
