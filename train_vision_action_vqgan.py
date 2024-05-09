@@ -9,6 +9,7 @@ from tats.modules.callbacks import ImageLogger, VideoLogger
 from pytorch_lightning.strategies import DeepSpeedStrategy, DDPStrategy
 from pytorch_lightning.loggers import TensorBoardLogger
 import torch
+import math
 # from tats.dataloader_img import get_image_dataloader
 
 
@@ -80,7 +81,7 @@ def main():
 
     model = VQGANVisionAction(args)
     if args.load_checkpoint is not None:
-        state_dict = torch.load(args.load_checkpoint, map_location='cpu')
+        state_dict = torch.load(args.load_checkpoint, map_location='cpu')['state_dict']
         load_result = model.load_state_dict(state_dict, strict=False)
         for missing_key in load_result.missing_keys:
             assert 'action' in missing_key.lower(), f"Missing key: {missing_key}"
