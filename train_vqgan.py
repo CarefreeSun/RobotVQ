@@ -34,7 +34,7 @@ def main():
     parser.add_argument('--downsample', nargs='+', type=int, default=(2, 16, 16))
     parser.add_argument('--disc_channels', type=int, default=64)
     parser.add_argument('--disc_layers', type=int, default=3)
-    parser.add_argument('--discriminator_iter_start', type=int, default=10000)
+    parser.add_argument('--discriminator_iter_start', type=int, default=5000)
     parser.add_argument('--disc_loss_type', type=str, default='hinge', choices=['hinge', 'vanilla'])
     parser.add_argument('--image_gan_weight', type=float, default=0.2)
     parser.add_argument('--video_gan_weight', type=float, default=0.2)
