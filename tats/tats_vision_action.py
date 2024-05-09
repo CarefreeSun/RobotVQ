@@ -171,7 +171,8 @@ class VQGANVisionAction(pl.LightningModule):
                                 'train/recon_loss_action': recon_loss_action,
                                 'train/aeloss': aeloss,
                                 'train/commitment_loss': vq_output['commitment_loss'],
-                                'train/perplexity': vq_output['perplexity']}, 
+                                'train/perplexity': vq_output['perplexity'], 
+                                'train/perplexity_action': vq_output_action['perplexity']},
                                 prog_bar=True, logger=True, on_step=True, on_epoch=True, sync_dist=True,
                                 batch_size=self.args.batch_size)
 
@@ -231,13 +232,13 @@ class VQGANVisionAction(pl.LightningModule):
                        'val/recon_loss_action': recon_loss_action,
                        'val/perceptual_loss': perceptual_loss,
                        'val/perplexity': vq_output['perplexity'],
+                       'val/perplexity_action': vq_output_action['perplexity'],
                        'val/commitment_loss': vq_output['commitment_loss']}, 
                        prog_bar=True, sync_dist=True,
                        batch_size=self.args.batch_size)
         
     def configure_optimizers(self):
 
-        lr = self.args.lr
         opt_ae = torch.optim.Adam(list(self.encoder.parameters())+
                                   list(self.decoder.parameters())+
                                   list(self.action_encoder.parameters())+
