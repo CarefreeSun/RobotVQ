@@ -9,6 +9,7 @@ from tats.modules.callbacks import ImageLogger, VideoLogger
 from pytorch_lightning.strategies import DeepSpeedStrategy, DDPStrategy
 from pytorch_lightning.loggers import TensorBoardLogger
 import math
+import torch
 # from tats.dataloader_img import get_image_dataloader
 
 
@@ -22,6 +23,7 @@ def main():
     parser.add_argument("--devices", type=int, default=8, help="e.g., gpu number")
     parser.add_argument("--default_root_dir", type=str, default="logs/debug-2")
     parser.add_argument("--max_steps", type=int, default=100000, help="max_steps")
+    parser.add_argument("--load_checkpoint", type=str, default=None, help="init checkpoint")
     parser.add_argument("--resume_from_checkpoint", type=str, default=None, help="resume from checkpoint")
 
     # model args
@@ -78,6 +80,11 @@ def main():
     args.lr = args.lr * math.sqrt(args.nodes * args.devices * args.batch_size)
 
     model = VQGANDeepSpeed(args)
+    if args.load_checkpoint is not None:
+        state_dict = torch.load(args.load_checkpoint, map_location='cpu')
+        load_result = model.load_state_dict(state_dict, strict=True)
+        # for missing_key in load_result.missing_keys:
+        #     assert 'action' in missing_key.lower(), f"Missing key: {missing_key}"
 
     callbacks = []
 
