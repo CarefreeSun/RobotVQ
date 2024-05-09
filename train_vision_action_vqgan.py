@@ -85,7 +85,7 @@ def main():
         load_result = model.load_state_dict(state_dict, strict=False)
         for missing_key in load_result.missing_keys:
             print(f"Missing key: {missing_key}")
-            assert 'actionencoder' in missing_key.lower() or 'actiondecoder' in missing_key.lower(), f"Missing key: {missing_key}"
+            assert 'action——encoder' in missing_key.lower() or 'action_decoder' in missing_key.lower(), f"Missing key: {missing_key}"
 
     callbacks = []
 
