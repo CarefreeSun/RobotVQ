@@ -8,6 +8,7 @@ from tats import VQGANDeepSpeed, VideoData, get_image_action_dataloader
 from tats.modules.callbacks import ImageLogger, VideoLogger
 from pytorch_lightning.strategies import DeepSpeedStrategy, DDPStrategy
 from pytorch_lightning.loggers import TensorBoardLogger
+import math
 # from tats.dataloader_img import get_image_dataloader
 
 
@@ -27,14 +28,14 @@ def main():
     parser.add_argument('--embedding_dim', type=int, default=256)
     parser.add_argument('--n_codes', type=int, default=16384)
     parser.add_argument('--n_hiddens', type=int, default=32)
-    parser.add_argument('--lr', type=float, default=3e-5)
+    parser.add_argument('--lr', type=float, default=5e-6)
     parser.add_argument('--downsample', nargs='+', type=int, default=(2, 16, 16))
     parser.add_argument('--disc_channels', type=int, default=64)
     parser.add_argument('--disc_layers', type=int, default=3)
     parser.add_argument('--discriminator_iter_start', type=int, default=10000)
     parser.add_argument('--disc_loss_type', type=str, default='hinge', choices=['hinge', 'vanilla'])
-    parser.add_argument('--image_gan_weight', type=float, default=1.0)
-    parser.add_argument('--video_gan_weight', type=float, default=1.0)
+    parser.add_argument('--image_gan_weight', type=float, default=0.2)
+    parser.add_argument('--video_gan_weight', type=float, default=0.2)
     parser.add_argument('--l1_weight', type=float, default=4.0)
     parser.add_argument('--gan_feat_weight', type=float, default=4.0)
     parser.add_argument('--perceptual_weight', type=float, default=4.0)
@@ -74,7 +75,7 @@ def main():
     train_dataloader = get_image_action_dataloader(args, split='train', action=False)
     test_dataloader = get_image_action_dataloader(args, split='test', action=False)
 
-    args.lr = args.lr * args.nodes * args.devices / 8.0 * args.batch_size / 4.0
+    args.lr = args.lr * math.sqrt(args.nodes * args.devices * args.batch_size)
 
     model = VQGANDeepSpeed(args)
 
