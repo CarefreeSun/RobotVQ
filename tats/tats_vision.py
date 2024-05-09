@@ -36,7 +36,7 @@ def vanilla_d_loss(logits_real, logits_fake):
         torch.mean(torch.nn.functional.softplus(logits_fake)))
     return d_loss
 
-class VQGANDeepSpeed(pl.LightningModule):
+class VQGANVision(pl.LightningModule):
     def __init__(self, args):
         super().__init__()
         self.args = args

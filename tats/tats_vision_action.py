@@ -175,7 +175,7 @@ class VQGANVisionAction(pl.LightningModule):
                                 prog_bar=True, logger=True, on_step=True, on_epoch=True, sync_dist=True,
                                 batch_size=self.args.batch_size)
 
-                return recon_loss, recon_loss_action, x_recon, vq_output, aeloss, perceptual_loss, gan_feat_loss
+                return recon_loss, recon_loss_action, x_recon, vq_output, vq_output_action, aeloss, perceptual_loss, gan_feat_loss
 
             if opt_stage == 1: # discriminator
                 logits_image_real, _ = self.image_discriminator(frames.detach())
@@ -203,14 +203,14 @@ class VQGANVisionAction(pl.LightningModule):
 
         else: # opt_stage is None, i.e., validation
             perceptual_loss = self.perceptual_model(frames, frames_recon).mean() * self.perceptual_weight
-            return recon_loss, recon_loss_action, x_recon, vq_output, perceptual_loss
+            return recon_loss, recon_loss_action, x_recon, vq_output, vq_output_action, perceptual_loss
 
     def training_step(self, batch, batch_idx):
         opt_ae, opt_disc = self.optimizers()
         x = batch['video']
         x_action = batch['actions']
 
-        recon_loss, recon_loss_action, _, vq_output, aeloss, perceptual_loss, gan_feat_loss = self.forward(x, x_action, opt_stage=0)
+        recon_loss, recon_loss_action, _, vq_output, vq_output_action, aeloss, perceptual_loss, gan_feat_loss = self.forward(x, x_action, opt_stage=0)
         commitment_loss = vq_output['commitment_loss']
         loss_ae = recon_loss + recon_loss_action + commitment_loss + aeloss + perceptual_loss + gan_feat_loss
         opt_ae.zero_grad()
@@ -226,7 +226,7 @@ class VQGANVisionAction(pl.LightningModule):
     def validation_step(self, batch, batch_idx):
         x = batch['video']
         x_action = batch['actions']
-        recon_loss, recon_loss_action, _, vq_output, perceptual_loss = self.forward(x, x_action)
+        recon_loss, recon_loss_action, _, vq_output, vq_output_action, perceptual_loss = self.forward(x, x_action)
         self.log_dict({'val/recon_loss': recon_loss,
                        'val/recon_loss_action': recon_loss_action,
                        'val/perceptual_loss': perceptual_loss,
