@@ -84,7 +84,8 @@ def main():
         state_dict = torch.load(args.load_checkpoint, map_location='cpu')['state_dict']
         load_result = model.load_state_dict(state_dict, strict=False)
         for missing_key in load_result.missing_keys:
-            assert 'action' in missing_key.lower(), f"Missing key: {missing_key}"
+            print(f"Missing key: {missing_key}")
+            assert 'actionencoder' in missing_key.lower() or 'actiondecoder' in missing_key.lower(), f"Missing key: {missing_key}"
 
     callbacks = []
 
