@@ -6,6 +6,7 @@ from tqdm import tqdm
 import json
 from PIL import Image
 from torchvision import transforms
+import numpy as np
 
 def main():
     parser = argparse.ArgumentParser()
@@ -33,17 +34,18 @@ def main():
     parser.add_argument('--action_dim', type=int, default=7, help='number of action dimention, xyz, rpy, gripper')
     parser.add_argument('--action_hidden_dim', type=int, default=128, help='hidden dimention of action')
     parser.add_argument('--video_action_layers', type=int, default=3, help='number of action layers')
+    parser.add_argument('--image_channels', type=int, default=3)
 
     # data and checkpoint args
     parser.add_argument("--load_checkpoint", type=str,
                 default='/mnt/data-rundong/VQ3D-vision/temporal2-8node/checkpoints/step_checkpoint-step_20000.ckpt',
                 help="init checkpoint")
     parser.add_argument("--src_filepath", type=str, 
-                default='/mnt/data-rundong/bridge2/gpt4v/train.json', 
+                default='/mnt/data-rundong/bridge2/gpt4v/test.jsonl', 
                 help="source file path")
     parser.add_argument("--dst_filepath", type=str, 
                 # default='/mnt/data-rundong/bridge2/gpt4v-tokenized-vision/test.json', 
-                default='/mnt/azureml/cr/j/bb7e6396fa4f48349d1ad48f61053a77/exe/wd/gpt4v-tokenized-vision/test.json', 
+                default='/mnt/azureml/cr/j/bb7e6396fa4f48349d1ad48f61053a77/exe/wd/gpt4v-tokenized-vision/test.jsonl', 
                 help="destination file path")
     parser.add_argument("--sequence_length", type=int, default=6)
     parser.add_argument("--gpu_id", type=int, default=0)
@@ -51,6 +53,7 @@ def main():
     parser.add_argument("--data_root", type=str, default="/mnt/robotdata/bridge2/images_bridge")
 
     parser.add_argument('--tokenize_action', action='store_true')
+    parser.add_argument("--resolution", type=int, default=256)
 
     args = parser.parse_args()
 
@@ -67,8 +70,7 @@ def main():
 
     model = model.eval().to(device)
 
-    json_filepath = args.src_filepath
-    lines = open(json_filepath, 'r').readlines()
+    lines = open(args.src_filepath, 'r').readlines()
 
     os.makedirs(os.path.dirname(args.dst_filepath), exist_ok=True)
     dst_file = open(args.dst_filepath, 'w')
@@ -101,16 +103,18 @@ def main():
             video = torch.stack(video).permute(1, 0, 2, 3).to(device) # (C, T, H, W)
             with torch.no_grad():
                 _, _, vq_output, *_ = model(video.unsqueeze(0))
-                encoding_indices = vq_output['encodings']
+                encoding_indices = vq_output['encodings'].flatten()
 
-            video_tokens.append(encoding_indices.cpu().numpy())
+            video_tokens.append(encoding_indices.cpu().numpy().tolist()) # (frame_number//6+1, 3*256), 3 = 6 / 2
+
+        # print(np.array(video_tokens).shape)
 
         if args.tokenize_action:
             # tokenize action
             actions = torch.tensor(data['actions']).to(device) # (frame_number, 7)
             with torch.no_grad():
                 _, _, _, vq_output_action, *_ = model(video.unsqueeze(0), actions.unsqueeze(0))
-                action_tokens = vq_output_action['encodings'].cpu().numpy()
+                action_tokens = vq_output_action['encodings'].cpu().numpy().tolist()
     
         for key in data:
             if key not in ['image_indices', 'actions']:
@@ -124,6 +128,9 @@ def main():
                     ret['actions'] = data['actions']
         
         dst_file.write(json.dumps(ret) + '\n')
+
+if __name__ == '__main__':
+    main()
 
 
         
