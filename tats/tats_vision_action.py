@@ -121,8 +121,8 @@ class VQGANVisionAction(pl.LightningModule):
         z_vision_action = torch.cat([z_vision.flatten(2), z_action.flatten(2)], dim=-1).permute(0, 2, 1) # B, (t*h*w+T*len(self.input_dims)), embed_dim
         z_vision_action = self.video_action_attn(z_vision_action, z_vision_action) # B, (t*h*w+T*len(self.input_dims)), embed_dim
 
-        z_vision = z_vision_action[:, :v_shape[2]*v_shape[3]*v_shape[4]].permute(0, 2, 1).reshape(v_shape) # B, embed_dim, t, H, W
-        z_action = z_vision_action[:, v_shape[2]*v_shape[3]*v_shape[4]:].permute(0, 2, 1).reshape(a_shape) # B, embed_dim, T, len(self.input_dims)
+        z_vision = z_vision_action[:, :v_shape[2]*v_shape[3]*v_shape[4]].permute(0, 2, 1).reshape(v_shape) + z_vision # B, embed_dim, t, H, W
+        z_action = z_vision_action[:, v_shape[2]*v_shape[3]*v_shape[4]:].permute(0, 2, 1).reshape(a_shape) + z_action # B, embed_dim, T, len(self.input_dims)
 
         vq_output = self.codebook(z_vision)
         vq_output_action = self.codebook(z_action.unsqueeze(-1))

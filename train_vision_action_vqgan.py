@@ -49,7 +49,7 @@ def main():
     parser.add_argument('--action_dim', nargs='+', type=int, default=(3, 3, 1), help='number of action dimention, xyz, rpy, gripper')
     parser.add_argument('--action_activation', nargs='+', type=str, default=('tanh', 'tanh', 'sigmoid'), help='activation function for action')
     parser.add_argument('--action_hidden_dim', type=int, default=128, help='hidden dimention of action')
-    parser.add_argument('--video_action_layers', type=int, default=4, help='number of action layers')
+    parser.add_argument('--video_action_layers', type=int, default=3, help='number of action layers')
 
     # data args
     parser.add_argument("--split_root", type=str, default="/mnt/data-rundong/bridge2/gpt4v")
