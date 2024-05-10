@@ -111,30 +111,27 @@ class VQGANVisionAction(pl.LightningModule):
         B, C, T, H, W = x.shape 
         # x_action is in shape B, T, action_dim
         
-        z = self.pre_vq_conv(self.encoder(x)) # B, embed_dim, t, h, w  *t, h, w is downsampled T, H, W*
-        z_action = self.action_encoder(x_action) # B, T, embed_dim, len(self.input_dims)
+        z_vision = self.pre_vq_conv(self.encoder(x)) # B, embed_dim, t, h, w  *t, h, w is downsampled T, H, W*
+        z_action = self.action_encoder(x_action) # B, embed_dim, T, len(self.input_dims)
 
-        vq_output = self.codebook(z)
-        vq_output_action = self.codebook(z_action.permute(0, 2, 1, 3).unsqueeze(-1))
+        v_shape = z_vision.shape
+        a_shape = z_action.shape
+
+        # cat the action embeddings to the visual embeddings, and do self-attention
+        z_vision_action = torch.cat([z_vision.flatten(2), z_action.flatten(2)], dim=-1).permute(0, 2, 1) # B, (t*h*w+T*len(self.input_dims)), embed_dim
+        z_vision_action = self.video_action_attn(z_vision_action, z_vision_action) # B, (t*h*w+T*len(self.input_dims)), embed_dim
+
+        z_vision = z_vision_action[:, :v_shape[2]*v_shape[3]*v_shape[4]].permute(0, 2, 1).reshape(v_shape) # B, embed_dim, t, H, W
+        z_action = z_vision_action[:, v_shape[2]*v_shape[3]*v_shape[4]:].permute(0, 2, 1).reshape(a_shape) # B, embed_dim, T, len(self.input_dims)
+
+        vq_output = self.codebook(z_vision)
+        vq_output_action = self.codebook(z_action.unsqueeze(-1))
 
         vq_embeddings = vq_output['embeddings'] # B, embed_dim, t, H, W
         vq_embeddings_action = vq_output_action['embeddings'] # B, embed_dim, T, len(self.input_dims), 1
-
-        v_shape = vq_embeddings.shape
-        a_shape = vq_embeddings_action.shape
-
-        # print(v_shape, a_shape)
-        # print(vq_embeddings.flatten(2).shape, vq_embeddings_action.flatten(2).shape)
-
-        # cat the action embeddings to the visual embeddings, and do self-attention
-        vq_vision_action_embeddings = torch.cat([vq_embeddings.flatten(2), vq_embeddings_action.flatten(2)], dim=-1).permute(0, 2, 1) # B, (t*h*w+T*len(self.input_dims)), embed_dim
-        vq_vision_action_embeddings = self.video_action_attn(vq_vision_action_embeddings, vq_vision_action_embeddings) # B, (t*h*w+T*len(self.input_dims)), embed_dim
-
-        vq_embeddings = vq_vision_action_embeddings.permute(0, 2, 1)[...,:v_shape[2]*v_shape[3]*v_shape[4]].reshape(v_shape) # B, embed_dim, t, H, W
-        vq_embeddings_action = vq_vision_action_embeddings.permute(0, 2, 1)[...,:a_shape[2]*a_shape[3]*a_shape[4]].reshape(a_shape).squeeze(-1).permute(0, 2, 1, 3) # B, T, embed_dim, len(self.input_dims)
-
+        
         x_recon = self.decoder(self.post_vq_conv(vq_embeddings))
-        x_recon_action = self.action_decoder(vq_embeddings_action)
+        x_recon_action = self.action_decoder(vq_embeddings_action.squeeze(-1))
 
         recon_loss = F.l1_loss(x_recon, x) * self.l1_weight
         recon_loss_action = F.l1_loss(x_recon_action, x_action) * self.l1_weight
@@ -589,7 +586,7 @@ class ActionEncoderStack(nn.Module):
     def forward(self, x):
         # split x into B, T, input_dim
         x_split = torch.split(x, self.input_dims, dim=-1) # (B, T, input_dim) 
-        return torch.stack([encoder(x_) for encoder, x_ in zip(self.encoders, x_split)]).permute(1, 2, 3, 0) # B, T, embed_dim, len(self.input_dims)
+        return torch.stack([encoder(x_) for encoder, x_ in zip(self.encoders, x_split)]).permute(1, 3, 2, 0) # (B, embed_dim, T, len(input_dims)
 
 class ActionDecoder(nn.Module):
     def __init__(self, embed_dim, hidden_dim, output_dim, activation=torch.tanh):
@@ -625,7 +622,7 @@ class ActionDecoderStack(nn.Module):
             self.decoders.append(ActionDecoder(embed_dim, hidden_dim, output_dim, activation))
 
     def forward(self, x):
-        # x is in shape B, T, embed_dim, len(output_dims)
-        x = x.permute(0, 1, 3, 2) # B, T, len(output_dims), embed_dim
-        return torch.cat([decoder(x_) for decoder, x_ in zip(self.decoders, torch.unbind(x, dim=2))], dim=-1) # B, T, len(output_dims)
+        # x is in shape B, embed_dim, T, len(output_dims)
+        x = x.permute(0, 2, 1, 3) # B, T, embed_dim, len(output_dims)
+        return torch.cat([decoder(x_) for decoder, x_ in zip(self.decoders, torch.unbind(x, dim=-1))], dim=-1) # B, T, sum(output_dims)
     
