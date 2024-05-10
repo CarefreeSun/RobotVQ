@@ -61,7 +61,7 @@ class VQGANVisionAction(pl.LightningModule):
 
         self.action_encoder = ActionEncoderStack(args.action_dim, args.action_hidden_dim, args.embedding_dim)
         activations = [getattr(torch, args.action_activation[i]) for i in range(len(args.action_activation))]
-        self.action_decoder = ActionDecoder(args.embedding_dim, args.action_hidden_dim, args.action_dim, activations)
+        self.action_decoder = ActionDecoderStack(args.embedding_dim, args.action_hidden_dim, args.action_dim, activations)
 
         attn_layer = nn.TransformerDecoderLayer(d_model=args.embedding_dim, nhead=4)
         self.video_action_attn = nn.TransformerDecoder(attn_layer, num_layers=args.video_action_layers)
@@ -123,8 +123,11 @@ class VQGANVisionAction(pl.LightningModule):
         v_shape = vq_embeddings.shape
         a_shape = vq_embeddings_action.shape
 
+        # print(v_shape, a_shape)
+        # print(vq_embeddings.flatten(2).shape, vq_embeddings_action.flatten(2).shape)
+
         # cat the action embeddings to the visual embeddings, and do self-attention
-        vq_vision_action_embeddings = torch.cat([vq_embeddings.flatten(2), vq_embeddings_action.flatten(2)], dim=1).permute(0, 2, 1) # B, (t*h*w+T*len(self.input_dims)), embed_dim
+        vq_vision_action_embeddings = torch.cat([vq_embeddings.flatten(2), vq_embeddings_action.flatten(2)], dim=-1).permute(0, 2, 1) # B, (t*h*w+T*len(self.input_dims)), embed_dim
         vq_vision_action_embeddings = self.video_action_attn(vq_vision_action_embeddings, vq_vision_action_embeddings) # B, (t*h*w+T*len(self.input_dims)), embed_dim
 
         vq_embeddings = vq_vision_action_embeddings.permute(0, 2, 1)[...,:v_shape[2]*v_shape[3]*v_shape[4]].reshape(v_shape) # B, embed_dim, t, H, W
@@ -614,7 +617,7 @@ class ActionDecoderStack(nn.Module):
     stack multiple action decoders with the same hidden dim and embed dim
     but different output dim
     '''
-    def __init__(self, output_dims, hidden_dim, embed_dim, activations):
+    def __init__(self, embed_dim, hidden_dim, output_dims, activations):
         super().__init__()
         self.output_dims = output_dims # a tuple
         self.decoders = nn.ModuleList()
@@ -624,5 +627,5 @@ class ActionDecoderStack(nn.Module):
     def forward(self, x):
         # x is in shape B, T, embed_dim, len(output_dims)
         x = x.permute(0, 1, 3, 2) # B, T, len(output_dims), embed_dim
-        return torch.stack([decoder(x_) for decoder, x_ in zip(self.decoders, torch.unbind(x, dim=2))], dim=2)
+        return torch.cat([decoder(x_) for decoder, x_ in zip(self.decoders, torch.unbind(x, dim=2))], dim=-1) # B, T, len(output_dims)
     
