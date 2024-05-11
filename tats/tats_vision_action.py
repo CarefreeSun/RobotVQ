@@ -501,8 +501,24 @@ class NLayerDiscriminator(nn.Module):
         else:
             return self.model(input), None
 
+class PositionalEncoding(nn.Module):
+	def __init__(self, min_deg=0, max_deg=10):
+		super(PositionalEncoding, self).__init__()
+		self.min_deg = min_deg
+		self.max_deg = max_deg
+		self.scales = torch.tensor([2 ** i for i in range(min_deg, max_deg)])
 
+	def forward(self, x):
+		# x: B*3
+		x_ = x
+		shape = list(x.shape[:-1]) + [-1]
+		x_enc = (x[..., None, :] * self.scales[:, None].to(x.device)).reshape(shape)
+		x_enc = torch.cat((x_enc, x_enc + 0.5 * torch.pi), -1)
 
+		# PE
+		x_ret = torch.sin(x_enc)
+		x_ret = torch.cat([x_ret, x_], dim=-1) # B*(6*(max_deg-min_deg)+3)
+		return x_ret
 
 class NLayerDiscriminator3D(nn.Module):
     def __init__(self, input_nc, ndf=64, n_layers=3, norm_layer=nn.SyncBatchNorm, use_sigmoid=False, getIntermFeat=True):
@@ -556,9 +572,10 @@ class NLayerDiscriminator3D(nn.Module):
             return self.model(input), None
 
 class ActionEncoder(nn.Module):
-    def __init__(self, input_dim, hidden_dim, embed_dim):
+    def __init__(self, input_dim, hidden_dim, embed_dim, min_deg=0, max_deg=10):
         super().__init__()
-        self.fc1 = nn.Linear(input_dim, hidden_dim)
+        self.pos_enc = PositionalEncoding(min_deg, max_deg)
+        self.fc1 = nn.Linear(input_dim * (2 * (self.pos_enc.max_deg - self.pos_enc.min_deg) + 1), hidden_dim)
         self.fc2 = nn.Linear(hidden_dim, embed_dim)
         self.final_block = nn.Sequential(
             SiLU(),
@@ -566,6 +583,7 @@ class ActionEncoder(nn.Module):
         )
 
     def forward(self, x):
+        x = self.pos_enc(x)
         h = self.fc1(x)
         h = self.fc2(h)
         h = self.final_block(h)
@@ -576,12 +594,12 @@ class ActionEncoderStack(nn.Module):
     stack multiple action encoders with the same hidden dim and embed dim
     but different input dim
     '''
-    def __init__(self, input_dims, hidden_dim, embed_dim):
+    def __init__(self, input_dims, hidden_dim, embed_dim, min_deg=0, max_deg=10):
         super().__init__()
         self.input_dims = input_dims # a tuple
         self.encoders = nn.ModuleList()
         for input_dim in input_dims:
-            self.encoders.append(ActionEncoder(input_dim, hidden_dim, embed_dim))
+            self.encoders.append(ActionEncoder(input_dim, hidden_dim, embed_dim, min_deg, max_deg))
 
     def forward(self, x):
         # split x into B, T, input_dim
