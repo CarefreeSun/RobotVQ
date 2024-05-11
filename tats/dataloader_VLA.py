@@ -63,20 +63,28 @@ class ImageActionDataset(Dataset):
     def __getitem__(self, index):
 
         data = self.filenames[index]
-        start = torch.randint(0, data['frame_number'] - self.length + 1, (1,)).item()
+        start = torch.randint(-1, data['frame_number'] - self.length + 1, (1,)).item()
         video = []
         actions = []
-        for i in range(start, start + self.length):
-            img_filename = data['image_paths'].format(data['image_indices'][i])
+
+        if start == -1: # video will be self.length duplicates of frame 0, and each action entry will be [0] * 7
+            img_filename = data['image_paths'].format(data['image_indices'][0])
             img = Image.open(img_filename)
             img = self.transform(img)
-            video.append(img)
-            if i != start + self.length - 1 and self.action:
+            video = [img] * self.length
+            actions = [0. for _ in range(7)] * self.length
+        else:
+            for i in range(start, start + self.length):
+                img_filename = data['image_paths'].format(data['image_indices'][i])
+                img = Image.open(img_filename)
+                img = self.transform(img)
+                video.append(img)
                 actions.append(data['actions'][i])
+                
         ret = {}
         ret['video'] = torch.stack(video).permute(1, 0, 2, 3) # (C, T, H, W)
         if self.action:
-            ret['actions'] = torch.tensor(actions) # (T-1, 7), 7 is the number of action dimension
+            ret['actions'] = torch.tensor(actions) # (T, 7), 7 is the number of action dimension
         return ret
 
         # key = self.keys[index]

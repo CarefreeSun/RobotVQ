@@ -25,6 +25,7 @@ def main():
     parser.add_argument("--max_steps", type=int, default=100000, help="max_steps")
     parser.add_argument("--resume_from_checkpoint", type=str, default=None, help="resume from checkpoint")
     parser.add_argument("--load_checkpoint", type=str, default=None, help="load vision model")
+    parser.add_argument("--continue_train", action="store_true", help="when specified and checkpoint exists, continue training from the checkpoint")
 
     # model args
     parser.add_argument('--embedding_dim', type=int, default=256)
@@ -142,7 +143,7 @@ def main():
     # load the most recent checkpoint file
     checkpoint_dir = os.path.join(args.default_root_dir, "checkpoints")
     os.makedirs(checkpoint_dir, exist_ok=True)
-    if os.path.exists(os.path.join(checkpoint_dir, "latest_checkpoint.ckpt")):
+    if os.path.exists(os.path.join(checkpoint_dir, "latest_checkpoint.ckpt")) and args.continue_train:
         print(f"Resume from checkpoint {os.path.join(checkpoint_dir, 'latest_checkpoint.ckpt')}")
 
     logger = TensorBoardLogger(save_dir=args.default_root_dir, name="logs")
