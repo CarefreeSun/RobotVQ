@@ -223,6 +223,8 @@ class VQGANVisionAction(pl.LightningModule):
 
     def training_step(self, batch, batch_idx):
         opt_ae, opt_disc = self.optimizers()
+        sch_ae, sch_disc = self.lr_schedulers()
+        
         x = batch['video']
         x_action = batch['actions']
 
@@ -234,11 +236,13 @@ class VQGANVisionAction(pl.LightningModule):
         opt_ae.zero_grad()
         self.manual_backward(loss_ae)
         opt_ae.step()
+        sch_ae.step()
 
         loss_disc = self.forward(x, x_action, opt_stage=1)
         opt_disc.zero_grad()
         self.manual_backward(loss_disc)
         opt_disc.step()
+        sch_disc.step()
 
 
     def validation_step(self, batch, batch_idx):
@@ -261,14 +265,18 @@ class VQGANVisionAction(pl.LightningModule):
                                   list(self.decoder.parameters())+
                                   list(self.action_encoder.parameters())+
                                   list(self.action_decoder.parameters())+
+                                  list(self.video_action_attn.parameters())+
                                   list(self.pre_vq_conv.parameters())+
                                   list(self.post_vq_conv.parameters())+
                                   list(self.codebook.parameters()),
                                   lr=self.args.lr, betas=(0.5, 0.9))
+        scheduler_ae = torch.optim.lr_scheduler.CosineAnnealingLR(opt_ae, T_max=self.args.max_steps, eta_min=0)
         opt_disc = torch.optim.Adam(list(self.image_discriminator.parameters())+
                                     list(self.video_discriminator.parameters()),
                                     lr=self.args.lr, betas=(0.5, 0.9))
-        return opt_ae, opt_disc
+        scheduler_disc = torch.optim.lr_scheduler.CosineAnnealingLR(opt_disc, T_max=self.args.max_steps, eta_min=0)
+
+        return [opt_ae, opt_disc], [scheduler_ae, scheduler_disc]
 
     def log_images(self, batch, **kwargs):
         log = dict()

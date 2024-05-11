@@ -114,6 +114,7 @@ def main():
                 self.train_log.write(f"Training at step {trainer.global_step // 2}\n")
                 for key, val in trainer.callback_metrics.items():
                     self.train_log.write(f"{key}: {val:.4f}\t")
+                self.train_log.write(f"lr: {trainer.optimizers[0].param_groups[0]['lr']:.4f}\t")
                 self.train_log.write("\n")
                 self.train_log.flush()
 
