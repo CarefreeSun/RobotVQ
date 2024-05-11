@@ -132,6 +132,7 @@ def main():
             self.eval_log.write(f"Validation at step {trainer.global_step // 2}\n")
             for key, val in trainer.callback_metrics.items():
                 self.eval_log.write(f"{key}: {val:.4f}\t")
+            self.eval_log.write("\n")
             self.eval_log.flush()
 
     callbacks.append(ImageLogger(batch_frequency=200, max_images=4, clamp=True))
