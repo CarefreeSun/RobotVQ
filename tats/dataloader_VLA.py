@@ -72,14 +72,16 @@ class ImageActionDataset(Dataset):
             img = Image.open(img_filename)
             img = self.transform(img)
             video = [img] * self.length
-            actions = [[0. for _ in range(7)] for _ in range(self.length)]
+            if self.action:
+                actions = [[0. for _ in range(7)] for _ in range(self.length)]
         else:
             for i in range(start, start + self.length):
                 img_filename = data['image_paths'].format(data['image_indices'][i])
                 img = Image.open(img_filename)
                 img = self.transform(img)
                 video.append(img)
-                actions.append(data['actions'][i])
+                if self.action:
+                    actions.append(data['actions'][i])
 
         ret = {}
         ret['video'] = torch.stack(video).permute(1, 0, 2, 3) # (C, T, H, W)
