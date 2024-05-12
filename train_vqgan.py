@@ -4,7 +4,7 @@ import os
 import argparse
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import ModelCheckpoint
-from tats import VQGANVision, VideoData, get_image_action_dataloader
+from tats import VQGANVision, VideoData, get_image_action_dataloader, count_parameters
 from tats.modules.callbacks import ImageLogger, VideoLogger
 from pytorch_lightning.strategies import DeepSpeedStrategy, DDPStrategy
 from pytorch_lightning.loggers import TensorBoardLogger

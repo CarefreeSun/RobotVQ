@@ -9,6 +9,7 @@ import skvideo.io
 
 import sys
 import pdb as pdb_original
+from prettytable import PrettyTable
 
 class ForkedPdb(pdb_original.Pdb):
     """A Pdb subclass that may be used
@@ -169,3 +170,18 @@ def visualize_tensors(t, name=None, nest=0):
     else:
         print(t)
     return ""
+
+def count_parameters(model, wanted_name=None):
+    table = PrettyTable(["Modules", "Parameters"])
+    total_params = 0
+    for name, parameter in model.named_parameters():
+        if not parameter.requires_grad:
+            continue
+        if wanted_name is not None and wanted_name not in name:
+            continue
+        params = parameter.numel()
+        table.add_row([name, params])
+        total_params += params
+    print(table)
+    print(f"Total Trainable Params: {total_params}")
+    return total_params
