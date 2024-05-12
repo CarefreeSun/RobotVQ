@@ -147,6 +147,7 @@ def main():
     checkpoint_dir = os.path.join(args.default_root_dir, "checkpoints")
     os.makedirs(checkpoint_dir, exist_ok=True)
     if os.path.exists(os.path.join(checkpoint_dir, "latest_checkpoint.ckpt")) and args.continue_train:
+        args.resume_from_checkpoint = os.path.join(checkpoint_dir, "latest_checkpoint.ckpt")
         print(f"Resume from checkpoint {os.path.join(checkpoint_dir, 'latest_checkpoint.ckpt')}")
 
     logger = TensorBoardLogger(save_dir=args.default_root_dir, name="logs")

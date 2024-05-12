@@ -270,11 +270,11 @@ class VQGANVisionAction(pl.LightningModule):
                                   list(self.post_vq_conv.parameters())+
                                   list(self.codebook.parameters()),
                                   lr=self.args.lr, betas=(0.5, 0.9))
-        scheduler_ae = torch.optim.lr_scheduler.CosineAnnealingLR(opt_ae, T_max=self.args.max_steps, eta_min=0)
+        scheduler_ae = torch.optim.lr_scheduler.CosineAnnealingLR(opt_ae, T_max=self.args.max_steps // 2, eta_min=0)
         opt_disc = torch.optim.Adam(list(self.image_discriminator.parameters())+
                                     list(self.video_discriminator.parameters()),
                                     lr=self.args.lr, betas=(0.5, 0.9))
-        scheduler_disc = torch.optim.lr_scheduler.CosineAnnealingLR(opt_disc, T_max=self.args.max_steps, eta_min=0)
+        scheduler_disc = torch.optim.lr_scheduler.CosineAnnealingLR(opt_disc, T_max=self.args.max_steps // 2, eta_min=0)
 
         return [opt_ae, opt_disc], [scheduler_ae, scheduler_disc]
 
