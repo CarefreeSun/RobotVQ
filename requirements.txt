@@ -1,9 +1,12 @@
+install
 einops
 ftfy
 h5py
 imageio
-pytorch-lightning==1.5.4
+imageio-ffmpeg
 regex
 scikit-video
 tqdm
+datasets
+tensorboard
 prettytable
