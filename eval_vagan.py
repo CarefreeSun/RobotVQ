@@ -4,7 +4,7 @@ import os
 import argparse
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import ModelCheckpoint
-from tats import VQGANDeepSpeed, VideoData, get_image_dataloader
+from tats import VQGANVisionAction, VideoData, get_image_action_dataloader, count_parameters
 from tats.modules.callbacks import ImageLogger, VideoLogger
 from pytorch_lightning.strategies import DeepSpeedStrategy, DDPStrategy
 from pytorch_lightning.loggers import TensorBoardLogger
@@ -77,11 +77,11 @@ def main():
         pass
 
     # train_dataloader = get_image_dataloader(args, split='train')
-    test_dataloader = get_image_dataloader(args, split='test')
+    test_dataloader = get_image_action_dataloader(args, split='test')
 
     device = f'cuda:{args.gpu_id}'
 
-    model = VQGANDeepSpeed(args).to(device)
+    model = VQGANVisionAction(args).to(device)
 
     # load the most recent checkpoint file
 
