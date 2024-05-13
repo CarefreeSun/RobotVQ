@@ -600,7 +600,7 @@ class ActionEncoder(nn.Module):
         h = self.dropout(h)
         h = self.fc2(h)
         h = self.final_block(h)
-        h = h.reshape(**x.shape[:-1], self.embed_dim, self.input_dim)
+        h = h.reshape(*x.shape[:-1], self.embed_dim, self.input_dim)
         return h
 
 class ActionEncoderStack(nn.Module):
