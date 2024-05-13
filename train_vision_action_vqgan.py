@@ -60,7 +60,7 @@ def main():
     parser.add_argument("--num_workers", type=int, default=1)
     parser.add_argument("--resolution", type=int, default=256)
     parser.add_argument('--image_channels', type=int, default=3)
-    parser.add_argument('--val_check_interval', type=int, default=2)
+    parser.add_argument('--val_check_interval', type=int, default=1)
     parser.add_argument('--log_interval', type=int, default=20)
     parser.add_argument('--save_step_frequency', type=int, default=5000)
 

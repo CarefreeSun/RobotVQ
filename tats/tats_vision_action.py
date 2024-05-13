@@ -112,7 +112,7 @@ class VQGANVisionAction(pl.LightningModule):
         # x_action is in shape B, T, action_dim
         
         z_vision = self.pre_vq_conv(self.encoder(x)) # B, embed_dim, t, h, w  *t, h, w is downsampled T, H, W*
-        z_action = self.action_encoder(x_action if x_action_masked is None else x_action_masked) # B, embed_dim, T, 7 (action_dim)
+        z_action = self.action_encoder(x_action if x_action_masked is None else x_action_masked).permute(0, 2, 1, 3) # B, embed_dim, T, 7
 
         v_shape = z_vision.shape
         a_shape = z_action.shape
@@ -227,7 +227,7 @@ class VQGANVisionAction(pl.LightningModule):
         
         x = batch['video']
         x_action = batch['actions']
-        x_action_masked = batch['actions_masked']
+        x_action_masked = batch['actions_masked'] if 'actions_masked' in batch else None
 
         recon_loss, recon_loss_action, _, _, vq_output, vq_output_action, aeloss, perceptual_loss, gan_feat_loss = self.forward(x, x_action, x_action_masked, opt_stage=0)
         commitment_loss = vq_output['commitment_loss']
@@ -591,7 +591,7 @@ class ActionEncoder(nn.Module):
         self.fc2 = nn.Linear(hidden_dim, embed_dim * input_dim)
         self.final_block = nn.Sequential(
             SiLU(),
-            nn.LayerNorm(embed_dim)
+            nn.LayerNorm(embed_dim * input_dim)
         )
 
     def forward(self, x):
@@ -628,7 +628,7 @@ class ActionDecoder(nn.Module):
         self.fc2 = nn.Linear(hidden_dim, output_dim)
         self.start_block = nn.Sequential(
             SiLU(),
-            nn.LayerNorm(embed_dim)
+            nn.LayerNorm(embed_dim * output_dim)
         )
         self.activation = activation
 

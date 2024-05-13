@@ -84,7 +84,7 @@ class ImageActionDataset(Dataset):
                 img = self.transform(img)
                 video.append(img)
                 if self.action:
-                    actions.append(data['actions'][i])
+                    actions.append(data['actions'][i-1] if i > 0 else [0. for _ in range(7)])
         
         if self.action and self.mask_action:
             mask_indices = torch.randperm(self.length)[:int(self.length * self.mask_action_ratio)]
@@ -98,8 +98,6 @@ class ImageActionDataset(Dataset):
             ret['actions'] = torch.tensor(actions) # (T, 7), 7 is the number of action dimension
             if self.mask_action:
                 ret['actions_masked'] = torch.tensor(actions_masked)
-            else:
-                ret['actions_masked'] = None
         return ret
 
         # key = self.keys[index]
