@@ -19,7 +19,7 @@ def main():
     # trainer args
     parser.add_argument("--nodes", type=int, default=1, help="nodes")
     parser.add_argument("--devices", type=int, default=8, help="e.g., gpu number")
-    parser.add_argument("--default_root_dir", type=str, default="logs/debug-vision-action-vqgan")
+    parser.add_argument("--default_root_dir", type=str, default="logs/0512-action1111111")
     parser.add_argument("--max_steps", type=int, default=100000, help="max_steps")
     parser.add_argument("--resume_from_checkpoint", type=str, default=None, help="resume from checkpoint")
     parser.add_argument("--load_checkpoint", type=str, default=None, help="load vision model")
@@ -46,9 +46,11 @@ def main():
     parser.add_argument('--norm_type', type=str, default='batch', choices=['batch', 'group'])
     parser.add_argument('--padding_type', type=str, default='replicate', choices=['replicate', 'constant', 'reflect', 'circular'])
     parser.add_argument('--action_dim', nargs='+', type=int, default=(3, 3, 1), help='number of action dimention, xyz, rpy, gripper')
-    parser.add_argument('--action_activation', nargs='+', type=str, default=('tanh', 'tanh', 'sigmoid'), help='activation function for action')
+    parser.add_argument('--action_activation', nargs='+', type=str, default=('tanh', 'tanh','sigmoid'), help='activation function for action')
     parser.add_argument('--action_hidden_dim', type=int, default=128, help='hidden dimention of action')
-    parser.add_argument('--video_action_layers', type=int, default=3, help='number of action layers')
+    parser.add_argument('--video_action_layers', type=int, default=6, help='number of action layers')
+    parser.add_argument('--action_mask', action='store_true', help='mask action')
+    parser.add_argument('--action_mask_ratio', type=float, default=0.1, help='mask ratio for action')
 
     # data args
     parser.add_argument("--split_root", type=str, default="/mnt/data-rundong/bridge2/gpt4v")
@@ -58,7 +60,7 @@ def main():
     parser.add_argument("--num_workers", type=int, default=1)
     parser.add_argument("--resolution", type=int, default=256)
     parser.add_argument('--image_channels', type=int, default=3)
-    parser.add_argument('--val_check_interval', type=int, default=1.0)
+    parser.add_argument('--val_check_interval', type=int, default=2)
     parser.add_argument('--log_interval', type=int, default=20)
     parser.add_argument('--save_step_frequency', type=int, default=5000)
 
@@ -96,8 +98,8 @@ def main():
             self.log_interval = args.log_interval
             self.best_val_loss = float('inf')
             os.makedirs(args.default_root_dir, exist_ok=True)
-            self.train_log = open(os.path.join(args.default_root_dir, "train_metrics.txt"), "w")
-            self.eval_log = open(os.path.join(args.default_root_dir, "eval_metrics.txt"), "w")
+            self.train_log = open(os.path.join(args.default_root_dir, "train_metrics.txt"), "a")
+            self.eval_log = open(os.path.join(args.default_root_dir, "eval_metrics.txt"), "a")
 
         def on_train_batch_end(self, trainer, pl_module, outputs, batch, batch_idx):
             if (trainer.global_step // 2) % self.save_step_frequency == 0:

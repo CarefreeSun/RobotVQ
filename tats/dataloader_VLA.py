@@ -5,6 +5,7 @@ import os
 from PIL import Image
 import argparse
 import json
+import copy
 
 class ImageActionDataset(Dataset):
     '''
@@ -27,6 +28,8 @@ class ImageActionDataset(Dataset):
         self.length = args.sequence_length
         self.split = split
         self.action = action
+        self.mask_action = args.action_mask
+        self.mask_action_ratio = args.action_mask_ratio
         self.filenames = []
 
         with open(os.path.join(self.split_root, f'{split}.jsonl'), 'r') as f:
@@ -82,11 +85,21 @@ class ImageActionDataset(Dataset):
                 video.append(img)
                 if self.action:
                     actions.append(data['actions'][i])
+        
+        if self.action and self.mask_action:
+            mask_indices = torch.randperm(self.length)[:int(self.length * self.mask_action_ratio)]
+            actions_masked = copy.deepcopy(actions)
+            for i in mask_indices:
+                actions_masked[i] = [0. for _ in range(7)]
 
         ret = {}
         ret['video'] = torch.stack(video).permute(1, 0, 2, 3) # (C, T, H, W)
         if self.action:
             ret['actions'] = torch.tensor(actions) # (T, 7), 7 is the number of action dimension
+            if self.mask_action:
+                ret['actions_masked'] = torch.tensor(actions_masked)
+            else:
+                ret['actions_masked'] = None
         return ret
 
         # key = self.keys[index]

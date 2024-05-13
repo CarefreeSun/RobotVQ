@@ -107,31 +107,31 @@ class VQGANVisionAction(pl.LightningModule):
         h = self.post_vq_conv(shift_dim(h, -1, 1))
         return self.decoder(h)
 
-    def forward(self, x, x_action, opt_stage=None, log_image=False):
+    def forward(self, x, x_action, x_action_masked=None, opt_stage=None, log_image=False):
         B, C, T, H, W = x.shape 
         # x_action is in shape B, T, action_dim
         
         z_vision = self.pre_vq_conv(self.encoder(x)) # B, embed_dim, t, h, w  *t, h, w is downsampled T, H, W*
-        z_action = self.action_encoder(x_action) # B, embed_dim, T, len(self.input_dims)
+        z_action = self.action_encoder(x_action if x_action_masked is None else x_action_masked) # B, embed_dim, T, 7 (action_dim)
 
         v_shape = z_vision.shape
         a_shape = z_action.shape
 
         # cat the action embeddings to the visual embeddings, and do self-attention
-        z_vision_action = torch.cat([z_vision.flatten(2), z_action.flatten(2)], dim=-1).permute(0, 2, 1) # B, (t*h*w+T*len(self.input_dims)), embed_dim
-        z_vision_action = self.video_action_attn(z_vision_action, z_vision_action) # B, (t*h*w+T*len(self.input_dims)), embed_dim
+        z_vision_action = torch.cat([z_vision.flatten(2), z_action.flatten(2)], dim=-1).permute(0, 2, 1) # B, (t*h*w+T*7), embed_dim
+        z_vision_action = self.video_action_attn(z_vision_action, z_vision_action) # B, (t*h*w+T*7, embed_dim
 
         z_vision = z_vision_action[:, :v_shape[2]*v_shape[3]*v_shape[4]].permute(0, 2, 1).reshape(v_shape) + z_vision # B, embed_dim, t, H, W
-        z_action = z_vision_action[:, v_shape[2]*v_shape[3]*v_shape[4]:].permute(0, 2, 1).reshape(a_shape) + z_action # B, embed_dim, T, len(self.input_dims)
+        z_action = z_vision_action[:, v_shape[2]*v_shape[3]*v_shape[4]:].permute(0, 2, 1).reshape(a_shape) + z_action # B, embed_dim, T, 7
 
         vq_output = self.codebook(z_vision)
         vq_output_action = self.codebook(z_action.unsqueeze(-1))
 
         vq_embeddings = vq_output['embeddings'] # B, embed_dim, t, H, W
-        vq_embeddings_action = vq_output_action['embeddings'] # B, embed_dim, T, len(self.input_dims), 1
+        vq_embeddings_action = vq_output_action['embeddings'] # B, embed_dim, T, 7, 1
         
         x_recon = self.decoder(self.post_vq_conv(vq_embeddings))
-        x_recon_action = self.action_decoder(vq_embeddings_action.squeeze(-1))
+        x_recon_action = self.action_decoder(vq_embeddings_action.squeeze(-1).permute(0, 2, 1, 3)) # B, T, embed_dim, 7
 
         recon_loss = F.l1_loss(x_recon, x) * self.l1_weight
         recon_loss_action = F.l1_loss(x_recon_action, x_action) * self.l1_weight
@@ -191,7 +191,7 @@ class VQGANVisionAction(pl.LightningModule):
                                 prog_bar=True, logger=True, on_step=True, on_epoch=True, sync_dist=True,
                                 batch_size=self.args.batch_size)
 
-                return recon_loss, recon_loss_action, x_recon, vq_output, vq_output_action, aeloss, perceptual_loss, gan_feat_loss
+                return recon_loss, recon_loss_action, x_recon, x_recon_action, vq_output, vq_output_action, aeloss, perceptual_loss, gan_feat_loss
 
             if opt_stage == 1: # discriminator
                 logits_image_real, _ = self.image_discriminator(frames.detach())
@@ -219,7 +219,7 @@ class VQGANVisionAction(pl.LightningModule):
 
         else: # opt_stage is None, i.e., validation
             perceptual_loss = self.perceptual_model(frames, frames_recon).mean() * self.perceptual_weight
-            return recon_loss, recon_loss_action, x_recon, vq_output, vq_output_action, perceptual_loss
+            return recon_loss, recon_loss_action, x_recon, x_recon_action, vq_output, vq_output_action, perceptual_loss
 
     def training_step(self, batch, batch_idx):
         opt_ae, opt_disc = self.optimizers()
@@ -227,8 +227,9 @@ class VQGANVisionAction(pl.LightningModule):
         
         x = batch['video']
         x_action = batch['actions']
+        x_action_masked = batch['actions_masked']
 
-        recon_loss, recon_loss_action, _, vq_output, vq_output_action, aeloss, perceptual_loss, gan_feat_loss = self.forward(x, x_action, opt_stage=0)
+        recon_loss, recon_loss_action, _, _, vq_output, vq_output_action, aeloss, perceptual_loss, gan_feat_loss = self.forward(x, x_action, x_action_masked, opt_stage=0)
         commitment_loss = vq_output['commitment_loss']
         commitment_loss_action = vq_output_action['commitment_loss']
         loss_ae = recon_loss + recon_loss_action + commitment_loss + commitment_loss_action + \
@@ -238,7 +239,7 @@ class VQGANVisionAction(pl.LightningModule):
         opt_ae.step()
         sch_ae.step()
 
-        loss_disc = self.forward(x, x_action, opt_stage=1)
+        loss_disc = self.forward(x, x_action, x_action_masked, opt_stage=1)
         opt_disc.zero_grad()
         self.manual_backward(loss_disc)
         opt_disc.step()
@@ -248,7 +249,7 @@ class VQGANVisionAction(pl.LightningModule):
     def validation_step(self, batch, batch_idx):
         x = batch['video']
         x_action = batch['actions']
-        recon_loss, recon_loss_action, _, vq_output, vq_output_action, perceptual_loss = self.forward(x, x_action)
+        recon_loss, recon_loss_action, _, _, vq_output, vq_output_action, perceptual_loss = self.forward(x, x_action)
         self.log_dict({'val/recon_loss': recon_loss,
                        'val/recon_loss_action': recon_loss_action,
                        'val/perceptual_loss': perceptual_loss,
@@ -582,9 +583,12 @@ class NLayerDiscriminator3D(nn.Module):
 class ActionEncoder(nn.Module):
     def __init__(self, input_dim, hidden_dim, embed_dim, min_deg=0, max_deg=10):
         super().__init__()
+        self.input_dim = input_dim
+        self.embed_dim = embed_dim
         self.pos_enc = PositionalEncoding(min_deg, max_deg)
         self.fc1 = nn.Linear(input_dim * (2 * (self.pos_enc.max_deg - self.pos_enc.min_deg) + 1), hidden_dim)
-        self.fc2 = nn.Linear(hidden_dim, embed_dim)
+        self.dropout = nn.Dropout(0.1)
+        self.fc2 = nn.Linear(hidden_dim, embed_dim * input_dim)
         self.final_block = nn.Sequential(
             SiLU(),
             nn.LayerNorm(embed_dim)
@@ -593,8 +597,10 @@ class ActionEncoder(nn.Module):
     def forward(self, x):
         x = self.pos_enc(x)
         h = self.fc1(x)
+        h = self.dropout(h)
         h = self.fc2(h)
         h = self.final_block(h)
+        h = h.reshape(**x.shape[:-1], self.embed_dim, self.input_dim)
         return h
 
 class ActionEncoderStack(nn.Module):
@@ -612,12 +618,13 @@ class ActionEncoderStack(nn.Module):
     def forward(self, x):
         # split x into B, T, input_dim
         x_split = torch.split(x, self.input_dims, dim=-1) # (B, T, input_dim) 
-        return torch.stack([encoder(x_) for encoder, x_ in zip(self.encoders, x_split)]).permute(1, 3, 2, 0) # (B, embed_dim, T, len(input_dims)
+        return torch.cat([encoder(x_) for encoder, x_ in zip(self.encoders, x_split)], dim=-1) # B, T, embed_dim, 7 (sum of input_dims)
 
 class ActionDecoder(nn.Module):
     def __init__(self, embed_dim, hidden_dim, output_dim, activation=torch.tanh):
         super().__init__()
-        self.fc1 = nn.Linear(embed_dim, hidden_dim)
+        self.fc1 = nn.Linear(embed_dim * output_dim, hidden_dim)
+        self.dropout = nn.Dropout(0.1)
         self.fc2 = nn.Linear(hidden_dim, output_dim)
         self.start_block = nn.Sequential(
             SiLU(),
@@ -630,6 +637,7 @@ class ActionDecoder(nn.Module):
         # for the output, the last entry falls into [0, 1] while other entries are in [-1, 1]
         h = self.start_block(x)
         h = self.fc1(h)
+        h = self.dropout(h)
         h = self.fc2(h)
         h = self.activation(h)
         # h = torch.cat([torch.tanh(h[:, :-1]), torch.sigmoid(h[:, -1:])], dim=1)
@@ -648,7 +656,7 @@ class ActionDecoderStack(nn.Module):
             self.decoders.append(ActionDecoder(embed_dim, hidden_dim, output_dim, activation))
 
     def forward(self, x):
-        # x is in shape B, embed_dim, T, len(output_dims)
-        x = x.permute(0, 2, 1, 3) # B, T, embed_dim, len(output_dims)
-        return torch.cat([decoder(x_) for decoder, x_ in zip(self.decoders, torch.unbind(x, dim=-1))], dim=-1) # B, T, sum(output_dims)
+        # x is in shape B, T, embed_dim, 7
+        x_split = torch.split(x, self.output_dims, dim=-1)
+        return torch.cat([decoder(x_.flatten(-2)) for decoder, x_ in zip(self.decoders, x_split)], dim=-1)
     

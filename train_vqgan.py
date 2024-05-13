@@ -93,8 +93,8 @@ def main():
             self.log_interval = args.log_interval
             self.best_val_loss = float('inf')
             os.makedirs(args.default_root_dir, exist_ok=True)
-            self.train_log = open(os.path.join(args.default_root_dir, "train_metrics.txt"), "w")
-            self.eval_log = open(os.path.join(args.default_root_dir, "eval_metrics.txt"), "w")
+            self.train_log = open(os.path.join(args.default_root_dir, "train_metrics.txt"), "a")
+            self.eval_log = open(os.path.join(args.default_root_dir, "eval_metrics.txt"), "a")
 
         def on_train_batch_end(self, trainer, pl_module, outputs, batch, batch_idx):
             if (trainer.global_step // 2) % self.save_step_frequency == 0:

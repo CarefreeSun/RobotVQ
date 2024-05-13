@@ -7,5 +7,5 @@ from .tats_vqgan import VQGAN
 from .tats_vision import VQGANVision
 from .tats_vision_action import VQGANVisionAction
 from .tats_transformer import Net2NetTransformer
-from .utils import count_parameters
+from .utils import count_parameters, AverageMeter
 
