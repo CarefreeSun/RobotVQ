@@ -63,7 +63,7 @@ class VQGANVisionAction(pl.LightningModule):
         activations = [getattr(torch, args.action_activation[i]) for i in range(len(args.action_activation))]
         self.action_decoder = ActionDecoderStack(args.embedding_dim, args.action_hidden_dim, args.action_dim, activations)
 
-        attn_layer = nn.TransformerDecoderLayer(d_model=args.embedding_dim, nhead=4)
+        attn_layer = nn.TransformerDecoderLayer(d_model=args.embedding_dim, nhead=8)
         self.video_action_attn = nn.TransformerDecoder(attn_layer, num_layers=args.video_action_layers)
         
         self.codebook = Codebook(args.n_codes, args.embedding_dim, no_random_restart=args.no_random_restart, restart_thres=args.restart_thres)

@@ -48,7 +48,7 @@ def main():
     parser.add_argument('--action_dim', nargs='+', type=int, default=(3, 3, 1), help='number of action dimention, xyz, rpy, gripper')
     parser.add_argument('--action_activation', nargs='+', type=str, default=('tanh', 'tanh','sigmoid'), help='activation function for action')
     parser.add_argument('--action_hidden_dim', type=int, default=128, help='hidden dimention of action')
-    parser.add_argument('--video_action_layers', type=int, default=6, help='number of action layers')
+    parser.add_argument('--video_action_layers', type=int, default=12, help='number of action layers')
     parser.add_argument('--action_mask', action='store_true', help='mask action')
     parser.add_argument('--action_mask_ratio', type=float, default=0.1, help='mask ratio for action')
 
@@ -101,7 +101,7 @@ def main():
             self.train_log = open(os.path.join(args.default_root_dir, "train_metrics.txt"), "a")
             self.eval_log = open(os.path.join(args.default_root_dir, "eval_metrics.txt"), "a")
 
-        def on_train_batch_end(self, trainer, pl_module, outputs, batch, batch_idx):
+        def on_train_batch_end(self, trainer: pl.Trainer, pl_module, outputs, batch, batch_idx):
             if (trainer.global_step // 2) % self.save_step_frequency == 0:
                 filepath = os.path.join(trainer.default_root_dir, 'checkpoints', f"step_checkpoint-step_{(trainer.global_step // 2)}.ckpt")
                 trainer.save_checkpoint(filepath)
@@ -110,7 +110,7 @@ def main():
                 trainer.save_checkpoint(filepath)
                 # save all callback metrics into a file
             
-            if (trainer.global_step // 2) % self.log_interval == 0:
+            if (trainer.global_step // 2) % self.log_interval == 0 and trainer.global_rank == 0:
                 self.train_log.write(f"Training at step {trainer.global_step // 2}\n")
                 self.train_log.write(f" lr: {trainer.optimizers[0].param_groups[0]['lr']:.6f}\n")
                 for key, val in trainer.callback_metrics.items():
@@ -119,12 +119,13 @@ def main():
                 self.train_log.flush()
 
         def on_train_epoch_end(self, trainer: pl.Trainer, pl_module: pl.LightningModule) -> None:
-            self.train_log.write(f"Training at epoch {trainer.current_epoch}\n")
-            self.train_log.write(f" lr: {trainer.optimizers[0].param_groups[0]['lr']:.6f}\n")
-            for key, val in trainer.callback_metrics.items():
-                self.train_log.write(f"{key}: {val:.4f}\t")
-            self.train_log.write("\n")
-            self.train_log.flush()
+            if trainer.global_rank == 0:
+                self.train_log.write(f"Training at epoch {trainer.current_epoch}\n")
+                self.train_log.write(f" lr: {trainer.optimizers[0].param_groups[0]['lr']:.6f}\n")
+                for key, val in trainer.callback_metrics.items():
+                    self.train_log.write(f"{key}: {val:.4f}\t")
+                self.train_log.write("\n")
+                self.train_log.flush()
         
         def on_validation_end(self, trainer: pl.Trainer, pl_module: pl.LightningModule) -> None:
             current_val_loss = trainer.callback_metrics['val/recon_loss']
@@ -133,11 +134,12 @@ def main():
                 filepath = os.path.join(trainer.default_root_dir, 'checkpoints', f"best_val_loss.ckpt")
                 trainer.save_checkpoint(filepath)
             # save all callback metrics into a file
-            self.eval_log.write(f"Validation at step {trainer.global_step // 2}\n")
-            for key, val in trainer.callback_metrics.items():
-                self.eval_log.write(f"{key}: {val:.4f}\t")
-            self.eval_log.write("\n")
-            self.eval_log.flush()
+            if trainer.global_rank == 0:
+                self.eval_log.write(f"Validation at step {trainer.global_step // 2}\n")
+                for key, val in trainer.callback_metrics.items():
+                    self.eval_log.write(f"{key}: {val:.4f}\t")
+                self.eval_log.write("\n")
+                self.eval_log.flush()
 
     callbacks.append(ImageLogger(batch_frequency=200, max_images=4, clamp=True))
     callbacks.append(VideoLogger(batch_frequency=200, max_videos=4, clamp=True))

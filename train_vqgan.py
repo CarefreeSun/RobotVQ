@@ -105,7 +105,7 @@ def main():
                 trainer.save_checkpoint(filepath)
                 # save all callback metrics into a file
             
-            if (trainer.global_step // 2) % self.log_interval == 0:
+            if (trainer.global_step // 2) % self.log_interval == 0 and trainer.global_rank == 0:
                 self.train_log.write(f"Training at step {trainer.global_step // 2}\n")
                 self.train_log.write(f" lr: {trainer.optimizers[0].param_groups[0]['lr']:.6f}\n")
                 for key, val in trainer.callback_metrics.items():
@@ -114,12 +114,13 @@ def main():
                 self.train_log.flush()
 
         def on_train_epoch_end(self, trainer: pl.Trainer, pl_module: pl.LightningModule) -> None:
-            self.train_log.write(f"Training at epoch {trainer.current_epoch} ")
-            self.train_log.write(f"lr: {trainer.optimizers[0].param_groups[0]['lr']:.6f}\n")
-            for key, val in trainer.callback_metrics.items():
-                self.train_log.write(f"{key}: {val:.4f}\t")
-            self.train_log.write("\n")
-            self.train_log.flush()
+            if trainer.global_rank == 0:
+                self.train_log.write(f"Training at epoch {trainer.current_epoch} ")
+                self.train_log.write(f"lr: {trainer.optimizers[0].param_groups[0]['lr']:.6f}\n")
+                for key, val in trainer.callback_metrics.items():
+                    self.train_log.write(f"{key}: {val:.4f}\t")
+                self.train_log.write("\n")
+                self.train_log.flush()
         
         def on_validation_end(self, trainer: pl.Trainer, pl_module: pl.LightningModule) -> None:
             current_val_loss = trainer.callback_metrics['val/recon_loss']
@@ -128,11 +129,12 @@ def main():
                 filepath = os.path.join(trainer.default_root_dir, 'checkpoints', f"best_val_loss.ckpt")
                 trainer.save_checkpoint(filepath)
             # save all callback metrics into a file
-            self.eval_log.write(f"Validation at step {trainer.global_step // 2}\n")
-            for key, val in trainer.callback_metrics.items():
-                self.eval_log.write(f"{key}: {val:.4f}\t")
-            self.eval_log.write("\n")
-            self.eval_log.flush()
+            if trainer.global_rank == 0:
+                self.eval_log.write(f"Validation at step {trainer.global_step // 2}\n")
+                for key, val in trainer.callback_metrics.items():
+                    self.eval_log.write(f"{key}: {val:.4f}\t")
+                self.eval_log.write("\n")
+                self.eval_log.flush()
 
     callbacks.append(ImageLogger(batch_frequency=200, max_images=4, clamp=True))
     callbacks.append(VideoLogger(batch_frequency=200, max_videos=4, clamp=True))
