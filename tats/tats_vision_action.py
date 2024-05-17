@@ -136,7 +136,7 @@ class VQGANVisionAction(pl.LightningModule):
         recon_loss = F.l1_loss(x_recon, x) * self.l1_weight
         recon_loss_action = F.l1_loss(x_recon_action, x_action) * self.l1_weight
 
-        frame_idx = torch.randint(0, T, [B]).cuda()
+        frame_idx = torch.randint(0, T, [B]).to(x.device)
         frame_idx_selected = frame_idx.reshape(-1, 1, 1, 1, 1).repeat(1, C, 1, H, W)
         frames = torch.gather(x, 2, frame_idx_selected).squeeze(2)
         frames_recon = torch.gather(x_recon, 2, frame_idx_selected).squeeze(2)

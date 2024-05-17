@@ -48,8 +48,10 @@ def main():
     parser.add_argument('--padding_type', type=str, default='replicate', choices=['replicate', 'constant', 'reflect', 'circular'])
     parser.add_argument('--action_dim', nargs='+', type=int, default=(1, 1, 1, 1, 1, 1, 1), help='number of action dimention, xyz, rpy, gripper')
     parser.add_argument('--action_activation', nargs='+', type=str, default=('tanh', 'tanh', 'tanh', 'tanh', 'tanh', 'tanh', 'sigmoid'), help='activation function for action')
-    parser.add_argument('--action_hidden_dim', type=int, default=64, help='hidden dimention of action')
-    parser.add_argument('--video_action_layers', type=int, default=3, help='number of action layers')
+    parser.add_argument('--action_hidden_dim', type=int, default=128, help='hidden dimention of action')
+    parser.add_argument('--video_action_layers', type=int, default=12, help='number of action layers')
+    parser.add_argument('--action_mask', action='store_true', help='mask action')
+    parser.add_argument('--action_mask_ratio', type=float, default=0.1, help='mask ratio for action')
 
     # data args
     parser.add_argument("--split_root", type=str, default="/mnt/data-rundong/bridge2/gpt4v")
@@ -80,7 +82,7 @@ def main():
     # train_dataloader = get_image_dataloader(args, split='train')
     # print(args.action_activation)
     # exit()
-    test_dataloader = get_image_action_dataloader(args, split='train', action=True)
+    test_dataloader = get_image_action_dataloader(args, split='test', action=True)
 
     device = f'cuda:{args.gpu_id}'
 
@@ -92,7 +94,7 @@ def main():
 
     # load the most recent checkpoint file
 
-    args.resume_from_checkpoint = '/mnt/data-rundong/VQ3D-vision-action/0512-action1111111/checkpoints/step_checkpoint-step_20000.ckpt'
+    args.resume_from_checkpoint = '/mnt/data-rundong/VQ3D-vision-action/0515-action111-actionMask0.5/checkpoints/latest_checkpoint.ckpt'
     
     assert args.resume_from_checkpoint is not None and os.path.exists(args.resume_from_checkpoint)
     ckpt = torch.load(args.resume_from_checkpoint, map_location='cpu')
