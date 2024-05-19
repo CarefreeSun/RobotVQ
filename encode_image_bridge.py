@@ -67,13 +67,12 @@ parser.add_argument('--weight_path', type=str, default='/mnt/data-rundong/VQ3D-v
 args = parser.parse_args()
 device = f'cuda:{args.gpu_id}'
 
-error_log = open(os.path.join(args.dst_dir, args.split, f'error_{args.gpu_id}.log'), 'a')
-
 assert args.sequence_length == 6
 
 dst_path = os.path.join(args.dst_dir, args.split, f'{args.gpu_id}.jsonl')
 os.makedirs(os.path.dirname(dst_path), exist_ok=True)
 dst_file = open(dst_path, 'w')
+error_log = open(os.path.join(args.dst_dir, args.split, f'error_{args.gpu_id}.log'), 'a')
 
 model = VQGANVisionAction(args)
 state_dict = torch.load(args.weight_path, map_location='cpu')['state_dict']
