@@ -145,8 +145,8 @@ with torch.no_grad():
                             'task_description': instance_data['trajectory_language'],
                             'scene_description': instance_data['descriptions']["0"],
                             'clip_description': instance_data['descriptions'][str(6*(start+stack_cnt)-1)] if (start+stack_cnt) != 0 else "",
-                            'video_tokens': video_tokens.cpu().numpy().tolist(),
-                            'action_tokens': action_tokens.cpu().numpy().tolist()
+                            'video_tokens': video_tokens[stack_cnt].tolist(),
+                            'action_tokens': action_tokens[stack_cnt].tolist(),
                         }
                         dst_file.write(json.dumps(ret) + '\n')
                         dst_file.flush()
