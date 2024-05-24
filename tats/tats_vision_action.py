@@ -94,18 +94,48 @@ class VQGANVisionAction(pl.LightningModule):
         return tuple([s // d for s, d in zip(input_shape,
                                              self.args.downsample)])
 
-    def encode(self, x, include_embeddings=False):
-        h = self.pre_vq_conv(self.encoder(x))
-        vq_output = self.codebook(h)
-        if include_embeddings:
-            return vq_output['embeddings'], vq_output['encodings']
-        else:
-            return vq_output['encodings']
+    def encode(self, x, x_action, include_embeddings=False):
+        z_vision = self.pre_vq_conv(self.encoder(x)) # B, embed_dim, t, h, w  *t, h, w is downsampled T, H, W*
+        z_action = self.action_encoder(x_action).permute(0, 2, 1, 3) # B, embed_dim, T, 7
 
-    def decode(self, encodings):
-        h = F.embedding(encodings, self.codebook.embeddings)
-        h = self.post_vq_conv(shift_dim(h, -1, 1))
-        return self.decoder(h)
+        v_shape = z_vision.shape
+        a_shape = z_action.shape
+
+        # cat the action embeddings to the visual embeddings, and do self-attention
+        z_vision_action = torch.cat([z_vision.flatten(2), z_action.flatten(2)], dim=-1).permute(0, 2, 1) # B, (t*h*w+T*7), embed_dim
+        z_vision_action = self.video_action_attn(z_vision_action, z_vision_action) # B, (t*h*w+T*7, embed_dim
+
+        z_vision = z_vision_action[:, :v_shape[2]*v_shape[3]*v_shape[4]].permute(0, 2, 1).reshape(v_shape) + z_vision # B, embed_dim, t, H, W
+        z_action = z_vision_action[:, v_shape[2]*v_shape[3]*v_shape[4]:].permute(0, 2, 1).reshape(a_shape) + z_action # B, embed_dim, T, 7
+
+        vq_output = self.codebook(z_vision)
+        vq_output_action = self.codebook(z_action.unsqueeze(-1))
+
+        if include_embeddings:
+            return (vq_output['embeddings'], vq_output['encodings']), (vq_output_action['embeddings'], vq_output_action['encodings'])
+        else:
+            return vq_output['encodings'], vq_output_action['encodings']
+
+    def decode(self, encodings, encodings_action):
+        h = F.embedding(encodings, self.codebook.embeddings) # B, t, h, w, embed_dim
+        h = self.post_vq_conv(shift_dim(h, -1, 1)) # B, embed_dim, t, h, w
+        visual_decoded = self.decoder(h) # B, T, C, H, W
+
+        h_action = F.embedding(encodings_action, self.codebook.embeddings) # B, T, 7, embed_dim
+        h_action = h_action.permute(0, 1, 3, 2) # B, T, embed_dim, 7
+        action_decoded = self.action_decoder(h_action) # B, T, embed_dim, 7
+        
+        return visual_decoded, action_decoded
+
+    def decode_video(self, encodings):
+        h = F.embedding(encodings, self.codebook.embeddings) # B, t, h, w, embed_dim
+        h = self.post_vq_conv(shift_dim(h, -1, 1)) # B, embed_dim, t, h, w
+        return self.decoder(h) # B, T, C, H, W
+
+    def decode_action(self, encodings): # encodings: B, T, 7
+        h = F.embedding(encodings, self.codebook.embeddings) # B, T, 7, embed_dim
+        h = h.permute(0, 1, 3, 2)
+        return self.action_decoder(h)
 
     def forward(self, x, x_action, x_action_masked=None, opt_stage=None, log_image=False):
         B, C, T, H, W = x.shape 
@@ -121,13 +151,13 @@ class VQGANVisionAction(pl.LightningModule):
         z_vision_action = torch.cat([z_vision.flatten(2), z_action.flatten(2)], dim=-1).permute(0, 2, 1) # B, (t*h*w+T*7), embed_dim
         z_vision_action = self.video_action_attn(z_vision_action, z_vision_action) # B, (t*h*w+T*7, embed_dim
 
-        z_vision = z_vision_action[:, :v_shape[2]*v_shape[3]*v_shape[4]].permute(0, 2, 1).reshape(v_shape) + z_vision # B, embed_dim, t, H, W
+        z_vision = z_vision_action[:, :v_shape[2]*v_shape[3]*v_shape[4]].permute(0, 2, 1).reshape(v_shape) + z_vision # B, embed_dim, t, h, w
         z_action = z_vision_action[:, v_shape[2]*v_shape[3]*v_shape[4]:].permute(0, 2, 1).reshape(a_shape) + z_action # B, embed_dim, T, 7
 
         vq_output = self.codebook(z_vision)
         vq_output_action = self.codebook(z_action.unsqueeze(-1))
 
-        vq_embeddings = vq_output['embeddings'] # B, embed_dim, t, H, W
+        vq_embeddings = vq_output['embeddings'] # B, embed_dim, t, h, w
         vq_embeddings_action = vq_output_action['embeddings'] # B, embed_dim, T, 7, 1
         
         x_recon = self.decoder(self.post_vq_conv(vq_embeddings))

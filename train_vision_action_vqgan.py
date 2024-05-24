@@ -53,7 +53,7 @@ def main():
     parser.add_argument('--action_mask_ratio', type=float, default=0.1, help='mask ratio for action')
 
     # data args
-    parser.add_argument("--split_root", type=str, default="/mnt/data-rundong/bridge2/gpt4v")
+    parser.add_argument("--split_root", type=str, default="/mnt/data-rundong/bridge2/tokenizer")
     parser.add_argument("--data_root", type=str, default="/mnt/robotdata/bridge2/images_bridge")
     parser.add_argument("--sequence_length", type=int, default=6)
     parser.add_argument("--batch_size", type=int, default=4)
