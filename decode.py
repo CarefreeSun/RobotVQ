@@ -54,7 +54,7 @@ parser.add_argument("--num_workers", type=int, default=8)
 parser.add_argument("--resolution", type=int, default=256)
 parser.add_argument('--image_channels', type=int, default=3)
 
-parser.add_argument("--filepath", type=str, default="../eval_logs.jsonl")
+parser.add_argument("--filepath", type=str, default="../eval_results.jsonl")
 parser.add_argument('--dst_dir', type=str, default='../eval_decoded/')
 parser.add_argument('--gpu_id', type=int, default=0)
 
@@ -137,9 +137,11 @@ with torch.no_grad():
         # save the input actions
         ret = {}
         ret['input_actions'] = input_actions.tolist()
-        ret['output_actions_gt'] = output_actions_gt.tolist()
+        ret['output_actions_gt_decoded'] = output_actions_gt.tolist()
         ret['output_actions_pred'] = output_actions_pred.tolist()
-        ret['task_scene_description'] = instance_data['task_scene_description']
+        ret['output_actions_gt_original'] = instance_data['gt_actions']
+        ret['task_description'] = instance_data['task_description']
+        ret['scene_description'] = instance_data['scene_description']
         ret['input_clip_description'] = instance_data['input_clip_description']
         ret['output_clip_description_pred'] = instance_data['output_clip_description_pred']
         ret['output_clip_description_gt'] = instance_data['output_clip_description_gt']
