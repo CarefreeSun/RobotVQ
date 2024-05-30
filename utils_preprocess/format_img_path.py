@@ -31,7 +31,8 @@ for line in tqdm.tqdm(lines):
         elif key == 'actions':
             data_new['actions'] = data['actions']
             if frame_numbers % 6 != 0:
-                data_new['actions'] += [[0] * 7] * (6 - frame_numbers % 6)
+                final_greeper_state = data['actions'][-1][-1] # 0 for closed, 1 for open
+                data_new['actions'] += [[0] * 6 + [final_greeper_state]] * (6 - frame_numbers % 6)
                 # data_new['actions'] += [data_new['actions'][-1]] * (6 - frame_numbers % 6)
         elif key == 'descriptions':
             data_new['descriptions'] = {}

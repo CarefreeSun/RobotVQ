@@ -54,7 +54,7 @@ def main():
     parser.add_argument('--action_mask_ratio', type=float, default=0.1, help='mask ratio for action')
 
     # data args
-    parser.add_argument("--split_root", type=str, default="/mnt/data-rundong/bridge2/gpt4v")
+    parser.add_argument("--split_root", type=str, default="/mnt/data-rundong/bridge2_processed/raw-for-tokenizer-training")
     parser.add_argument("--data_root", type=str, default="/mnt/robotdata/bridge2/images_bridge")
     parser.add_argument("--sequence_length", type=int, default=6)
     parser.add_argument("--batch_size", type=int, default=4)
@@ -94,7 +94,7 @@ def main():
 
     # load the most recent checkpoint file
 
-    args.resume_from_checkpoint = '/mnt/data-rundong/VQ3D-vision-action/0515-action111-actionMask0.5/checkpoints/latest_checkpoint.ckpt'
+    args.resume_from_checkpoint = '/mnt/data-rundong/VQ3D-vision-action/0515-action111-actionMask0.5/checkpoints/step_checkpoint-step_30000.ckpt'
     
     assert args.resume_from_checkpoint is not None and os.path.exists(args.resume_from_checkpoint)
     ckpt = torch.load(args.resume_from_checkpoint, map_location='cpu')

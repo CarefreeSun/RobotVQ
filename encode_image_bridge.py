@@ -54,9 +54,9 @@ parser.add_argument("--num_workers", type=int, default=8)
 parser.add_argument("--resolution", type=int, default=256)
 parser.add_argument('--image_channels', type=int, default=3)
 
-parser.add_argument('--src', type=str, default='/mnt/azureml/cr/j/bb7e6396fa4f48349d1ad48f61053a77/exe/wd/bridge2_processed/gpt4v-new')
+parser.add_argument('--src', type=str, default='../bridge2_processed/raw-for-tokenizer-training')
 parser.add_argument("--data_root", type=str, default="/mnt/robotdata/bridge2/images_bridge")
-parser.add_argument('--dst_dir', type=str, default='../bridge2_processed/tokenized')
+parser.add_argument('--dst_dir', type=str, default='../bridge2_processed/tokenized-0515mask0.5')
 parser.add_argument('--split', type=str, default='test')
 parser.add_argument('--gpu_id', type=int, default=0)
 parser.add_argument('--num_shards', type=int, default=8)
@@ -154,19 +154,3 @@ with torch.no_grad():
                     error_log.write(line)
                     error_log.flush()
 
-# randomly sample 90% of the data for training, and 10% for validation
-# os.makedirs(os.path.join(args.dst_dir, 'train'), exist_ok=True)
-# os.makedirs(os.path.join(args.dst_dir, 'val'), exist_ok=True)
-
-# with open(dst_path, 'r') as f:
-#     lines = f.readlines()
-#     np.random.shuffle(lines)
-#     num_train = int(len(lines) * 0.9)
-#     train_lines = lines[:num_train]
-#     val_lines = lines[num_train:]
-#     with open(os.path.join(args.dst_dir, 'train', f'data_bridge2_processed_{args.gpu_id}.jsonl'), 'w') as f:
-#         for line in train_lines:
-#             f.write(line)
-#     with open(os.path.join(args.dst_dir, 'val', f'data_bridge2_processed_{args.gpu_id}.jsonl'), 'w') as f:
-#         for line in val_lines:
-#             f.write(line)
