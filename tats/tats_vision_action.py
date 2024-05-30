@@ -60,7 +60,7 @@ class VQGANVisionAction(pl.LightningModule):
         self.post_vq_conv = SamePadConv3d(args.embedding_dim, self.enc_out_ch, 1)
 
         self.action_encoder = ActionEncoderStack(args.action_dim, args.action_hidden_dim, args.embedding_dim)
-        activations = [getattr(torch, args.action_activation[i]) for i in range(len(args.action_activation))]
+        activations = [getattr(torch, args.action_activation[i]) if args.action_activation[i] != 'none' else torch.nn.Identity() for i in range(len(args.action_activation))]
         self.action_decoder = ActionDecoderStack(args.embedding_dim, args.action_hidden_dim, args.action_dim, activations)
 
         attn_layer = nn.TransformerDecoderLayer(d_model=args.embedding_dim, nhead=8)

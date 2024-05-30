@@ -45,16 +45,22 @@ def main():
     parser.add_argument('--no_random_restart', action='store_true')
     parser.add_argument('--norm_type', type=str, default='batch', choices=['batch', 'group'])
     parser.add_argument('--padding_type', type=str, default='replicate', choices=['replicate', 'constant', 'reflect', 'circular'])
-    parser.add_argument('--action_dim', nargs='+', type=int, default=(3, 3, 1), help='number of action dimention, xyz, rpy, gripper')
-    parser.add_argument('--action_activation', nargs='+', type=str, default=('tanh', 'tanh','sigmoid'), help='activation function for action')
+    parser.add_argument('--action_dim', nargs='+', type=int, default=(1, 1, 1, 1, 1, 1, 1), help='number of action dimention, xyz, rpy, gripper')
+    parser.add_argument('--action_activation', nargs='+', type=str, default=('none', 'none', 'none', 'none', 'none', 'none', 'sigmoid'),
+                         help='activation function for action, should be an attribute of torch or none')
     parser.add_argument('--action_hidden_dim', type=int, default=128, help='hidden dimention of action')
     parser.add_argument('--video_action_layers', type=int, default=12, help='number of action layers')
     parser.add_argument('--action_mask', action='store_true', help='mask action')
     parser.add_argument('--action_mask_ratio', type=float, default=0.1, help='mask ratio for action')
 
     # data args
-    parser.add_argument("--split_root", type=str, default="/mnt/data-rundong/bridge2_processed/raw-for-tokenizer-training")
-    parser.add_argument("--data_root", type=str, default="/mnt/robotdata/bridge2/images_bridge")
+    parser.add_argument("--data_root", type=str, default="/mnt/data-rundong/robot_datasets/tokenizer-training")
+    parser.add_argument("--dataset_names", nargs='+', type=str, 
+                        default=("bridge2"))
+    parser.add_argument("--image_root", nargs='+', type=str, 
+                        default=("/mnt/robotdata/bridge2/images_bridge",))
+
+    parser.add_argument("--normalize", action="store_true", help="normalize the actions")
     parser.add_argument("--sequence_length", type=int, default=6)
     parser.add_argument("--batch_size", type=int, default=4)
     parser.add_argument("--num_workers", type=int, default=1)

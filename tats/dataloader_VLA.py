@@ -15,8 +15,8 @@ class ImageActionDataset(Dataset):
     each time when calling __getitem__, we randomly sample a video clip from the dataset
     '''
     def __init__(self, args, action=False, split='train', transform=None):
-        self.split_root = args.split_root
         self.data_root = args.data_root
+        # self.data_root = args.data_root
         if transform is None:
             self.transform = transforms.Compose([
                 transforms.Resize((args.resolution, args.resolution)),
@@ -31,34 +31,44 @@ class ImageActionDataset(Dataset):
         self.mask_action = args.action_mask
         self.mask_action_ratio = args.action_mask_ratio
         self.filenames = []
+        
+        mean_std = json.load(open(args.normalize_file, 'r'))
+        self.mean = mean_std['mean']
+        self.std = mean_std['std']
+        self.mean[-1] = 0. # set the last dimension to 0
+        self.std[-1] = 1. # set the last dimension to 1
 
-        with open(os.path.join(self.split_root, f'{split}.jsonl'), 'r') as f:
-            for line in f:
-                instance_data = json.loads(line)
-                num_frames = instance_data['frame_number']
-                if num_frames < self.length:
-                    continue
-                instance_format = args.data_root + '/outputimage_' + str(instance_data['trajectory_id']) + '_{}_' + str(instance_data['view']) + '.png'
-                new_instance = {'image_paths': instance_format, 'frame_number': num_frames, 'image_indices': instance_data['image_indices']}
-                if self.action:
-                    new_instance['actions'] = instance_data['actions']
-                self.filenames.append(new_instance)
+        dataset_names = args.dataset_names
+        dataset_roots = args.image_root
 
-        # with open(os.path.join(self.root, f'{split}.txt'), 'r') as f:
-        #     img_filenames = f.readlines()
-        # img_filenames = [img_filename.strip() for img_filename in img_filenames]
+        self.normalize = args.normalize
+        self.mean_std = {}
 
-        # for img_filename in img_filenames:
-        #     _, scene_id, frame_id, view_id = img_filename.split('/')[-1].split('.')[0].split('_')
-        #     key = (scene_id, view_id)
-        #     if key not in self.filenames:
-        #         self.filenames[key] = []
-        #     self.filenames[key].append(img_filename)
-
-        # self.keys = list(self.filenames.keys())
-
-        # remove keys that have less than self.length frames
-        # self.keys = [key for key in self.keys if len(self.filenames[key]) >= self.length]
+        for i, dataset_name in enumerate(dataset_names):
+            mean_std_path = os.path.join(self.data_root, dataset_name, 'mean_std.json')
+            assert os.path.exists(mean_std_path)
+            mean_std = json.load(open(mean_std_path, 'r'))
+            mean, std = mean_std['mean'], mean_std['std']
+            mean[-1] = 0.
+            std[-1] = 1.
+            self.mean_std[dataset_name] = {'mean': mean, 'std': std}
+            if dataset_name == 'bridge2':
+                with open(os.path.join(self.data_root, dataset_name, f'{split}.jsonl'), 'r') as f:
+                    for line in f:
+                        instance_data = json.loads(line)
+                        num_frames = instance_data['frame_number']
+                        if num_frames < self.length:
+                            continue
+                        instance_format = dataset_roots[i] + '/outputimage_' + str(instance_data['trajectory_id']) + '_{}_' + str(instance_data['view']) + '.png'
+                        new_instance = {'dataset_name': dataset_name, 'image_paths': instance_format, 
+                                        'frame_number': num_frames, 'image_indices': instance_data['image_indices']}
+                        if self.action:
+                            new_instance['actions'] = instance_data['actions']
+                        self.filenames.append(new_instance)
+            elif dataset_name == 'rt1':
+                pass
+            else:
+                assert False
 
     def __len__(self):
         return len(self.filenames)
@@ -91,13 +101,22 @@ class ImageActionDataset(Dataset):
             actions_masked = copy.deepcopy(actions)
             for i in mask_indices:
                 actions_masked[i] = [0. for _ in range(7)]
+        
+        # normalize the actions
+        if self.normalize:
+            if self.action:
+                actions = torch.tensor(actions)
+                actions = (actions - torch.tensor(self.mean_std[data['dataset_name']]['mean'])) / torch.tensor(self.mean_std[data['dataset_name']]['std'])
+                if self.mask_action:
+                    actions_masked = torch.tensor(actions_masked)
+                    actions_masked = (actions_masked - torch.tensor(self.mean_std[data['dataset_name']]['mean'])) / torch.tensor(self.mean_std[data['dataset_name']]['std'])
 
         ret = {}
         ret['video'] = torch.stack(video).permute(1, 0, 2, 3) # (C, T, H, W)
         if self.action:
-            ret['actions'] = torch.tensor(actions) # (T, 7), 7 is the number of action dimension
+            ret['actions'] = actions # (T, 7), 7 is the number of action dimension
             if self.mask_action:
-                ret['actions_masked'] = torch.tensor(actions_masked)
+                ret['actions_masked'] = actions_masked
         return ret
 
         # key = self.keys[index]
