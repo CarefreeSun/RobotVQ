@@ -56,9 +56,10 @@ def main():
     # data args
     parser.add_argument("--data_root", type=str, default="/mnt/data-rundong/robot_datasets/tokenizer-training")
     parser.add_argument("--dataset_names", nargs='+', type=str, 
-                        default=("bridge2"))
+                        default=("bridge2", "rt1"))
     parser.add_argument("--image_root", nargs='+', type=str, 
-                        default=("/mnt/robotdata/bridge2/images_bridge",))
+                        default=("/mnt/robotdata/bridge2/images_bridge",
+                                "/mnt/robotdata/RT1-images"))
 
     parser.add_argument("--normalize", action="store_true", help="normalize the actions")
     parser.add_argument("--sequence_length", type=int, default=6)

@@ -31,12 +31,6 @@ class ImageActionDataset(Dataset):
         self.mask_action = args.action_mask
         self.mask_action_ratio = args.action_mask_ratio
         self.filenames = []
-        
-        mean_std = json.load(open(args.normalize_file, 'r'))
-        self.mean = mean_std['mean']
-        self.std = mean_std['std']
-        self.mean[-1] = 0. # set the last dimension to 0
-        self.std[-1] = 1. # set the last dimension to 1
 
         dataset_names = args.dataset_names
         dataset_roots = args.image_root
@@ -46,29 +40,30 @@ class ImageActionDataset(Dataset):
 
         for i, dataset_name in enumerate(dataset_names):
             mean_std_path = os.path.join(self.data_root, dataset_name, 'mean_std.json')
-            assert os.path.exists(mean_std_path)
+            assert os.path.exists(mean_std_path), f'{mean_std_path} does not exist'
             mean_std = json.load(open(mean_std_path, 'r'))
             mean, std = mean_std['mean'], mean_std['std']
             mean[-1] = 0.
             std[-1] = 1.
             self.mean_std[dataset_name] = {'mean': mean, 'std': std}
-            if dataset_name == 'bridge2':
-                with open(os.path.join(self.data_root, dataset_name, f'{split}.jsonl'), 'r') as f:
-                    for line in f:
-                        instance_data = json.loads(line)
-                        num_frames = instance_data['frame_number']
-                        if num_frames < self.length:
-                            continue
+
+            with open(os.path.join(self.data_root, dataset_name, f'{split}.jsonl'), 'r') as f:
+                for line in f:
+                    instance_data = json.loads(line)
+                    num_frames = instance_data['frame_number']
+                    if num_frames < self.length:
+                        continue
+                    if dataset_name == 'bridge2':
                         instance_format = dataset_roots[i] + '/outputimage_' + str(instance_data['trajectory_id']) + '_{}_' + str(instance_data['view']) + '.png'
-                        new_instance = {'dataset_name': dataset_name, 'image_paths': instance_format, 
-                                        'frame_number': num_frames, 'image_indices': instance_data['image_indices']}
-                        if self.action:
-                            new_instance['actions'] = instance_data['actions']
-                        self.filenames.append(new_instance)
-            elif dataset_name == 'rt1':
-                pass
-            else:
-                assert False
+                    elif dataset_name == 'rt1':
+                        instance_format = dataset_roots[i] + '/outputimage_' + str(instance_data['trajectory_id']) + '_{}' + '.png'
+                    else:
+                        assert False, f'Unknown dataset name: {dataset_name}'
+                    new_instance = {'dataset_name': dataset_name, 'image_paths': instance_format, 
+                                    'frame_number': num_frames, 'image_indices': instance_data['image_indices']}
+                    if self.action:
+                        new_instance['actions'] = instance_data['actions']
+                    self.filenames.append(new_instance)
 
     def __len__(self):
         return len(self.filenames)

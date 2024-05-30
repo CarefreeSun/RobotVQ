@@ -64,8 +64,8 @@ def data_iterator(data_dir, chunk_size=200):
         yield action_data
 
 if __name__ == '__main__':
-    data_dir = '../bridge2_processed/formatted.jsonl'
-    save_dir = '../bridge2_processed'
+    data_dir = '../robot_datasets/tokenizer-training/rt1/rt1_formatted_wo_description.jsonl'
+    save_dir = '../robot_datasets/tokenizer-training/rt1/'
     # calculate_mean_std(data_dir, save_dir)
 
     incremental_mean_std(data_iterator(data_dir), save_dir)

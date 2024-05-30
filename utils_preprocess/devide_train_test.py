@@ -3,10 +3,10 @@ import random
 import os
 from tqdm import tqdm
 
-filepath = './bridge2_processed/formatted.jsonl'
+filepath = '../robot_datasets/tokenizer-training/rt1/rt1_formatted_wo_description.jsonl'
 
-train_split_path = './bridge2_processed/raw-for-tokenizer-training/train.jsonl'
-test_split_path = './bridge2_processed/raw-for-tokenizer-training/test.jsonl'
+train_split_path = '../robot_datasets/tokenizer-training/rt1/train.jsonl'
+test_split_path = '../robot_datasets/tokenizer-training/rt1/test.jsonl'
 
 os.makedirs(os.path.dirname(train_split_path), exist_ok=True)
 
