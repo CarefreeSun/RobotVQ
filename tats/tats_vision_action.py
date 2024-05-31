@@ -151,8 +151,12 @@ class VQGANVisionAction(pl.LightningModule):
         z_vision_action = torch.cat([z_vision.flatten(2), z_action.flatten(2)], dim=-1).permute(0, 2, 1) # B, (t*h*w+T*7), embed_dim
         z_vision_action = self.video_action_attn(z_vision_action, z_vision_action) # B, (t*h*w+T*7, embed_dim
 
-        z_vision = z_vision_action[:, :v_shape[2]*v_shape[3]*v_shape[4]].permute(0, 2, 1).reshape(v_shape) + z_vision # B, embed_dim, t, h, w
-        z_action = z_vision_action[:, v_shape[2]*v_shape[3]*v_shape[4]:].permute(0, 2, 1).reshape(a_shape) + z_action # B, embed_dim, T, 7
+        if self.args.wo_transformer_residual:
+            z_vision = z_vision_action[:, :v_shape[2]*v_shape[3]*v_shape[4]].permute(0, 2, 1).reshape(v_shape) # B, embed_dim, t, h, w
+            z_action = z_vision_action[:, v_shape[2]*v_shape[3]*v_shape[4]:].permute(0, 2, 1).reshape(a_shape) # B, embed_dim, T, 7
+        else:
+            z_vision = z_vision_action[:, :v_shape[2]*v_shape[3]*v_shape[4]].permute(0, 2, 1).reshape(v_shape) + z_vision
+            z_action = z_vision_action[:, v_shape[2]*v_shape[3]*v_shape[4]:].permute(0, 2, 1).reshape(a_shape) + z_action
 
         vq_output = self.codebook(z_vision)
         vq_output_action = self.codebook(z_action.unsqueeze(-1))
@@ -540,25 +544,6 @@ class NLayerDiscriminator(nn.Module):
         else:
             return self.model(input), None
 
-class PositionalEncoding(nn.Module):
-	def __init__(self, min_deg=0, max_deg=10):
-		super(PositionalEncoding, self).__init__()
-		self.min_deg = min_deg
-		self.max_deg = max_deg
-		self.scales = torch.tensor([2 ** i for i in range(min_deg, max_deg)])
-
-	def forward(self, x):
-		# x: B*3
-		x_ = x
-		shape = list(x.shape[:-1]) + [-1]
-		x_enc = (x[..., None, :] * self.scales[:, None].to(x.device)).reshape(shape)
-		x_enc = torch.cat((x_enc, x_enc + 0.5 * torch.pi), -1)
-
-		# PE
-		x_ret = torch.sin(x_enc)
-		x_ret = torch.cat([x_ret, x_], dim=-1) # B*(6*(max_deg-min_deg)+3)
-		return x_ret
-
 class NLayerDiscriminator3D(nn.Module):
     def __init__(self, input_nc, ndf=64, n_layers=3, norm_layer=nn.SyncBatchNorm, use_sigmoid=False, getIntermFeat=True):
         super(NLayerDiscriminator3D, self).__init__()
@@ -609,6 +594,25 @@ class NLayerDiscriminator3D(nn.Module):
             return res[-1], res[1:]
         else:
             return self.model(input), None
+
+class PositionalEncoding(nn.Module):
+	def __init__(self, min_deg=0, max_deg=10):
+		super(PositionalEncoding, self).__init__()
+		self.min_deg = min_deg
+		self.max_deg = max_deg
+		self.scales = torch.tensor([2 ** i for i in range(min_deg, max_deg)])
+
+	def forward(self, x):
+		# x: B*3
+		x_ = x
+		shape = list(x.shape[:-1]) + [-1]
+		x_enc = (x[..., None, :] * self.scales[:, None].to(x.device)).reshape(shape)
+		x_enc = torch.cat((x_enc, x_enc + 0.5 * torch.pi), -1)
+
+		# PE
+		x_ret = torch.sin(x_enc)
+		x_ret = torch.cat([x_ret, x_], dim=-1) # B*(6*(max_deg-min_deg)+3)
+		return x_ret
 
 class ActionEncoder(nn.Module):
     def __init__(self, input_dim, hidden_dim, embed_dim, min_deg=0, max_deg=10):

@@ -52,6 +52,7 @@ def main():
     parser.add_argument('--video_action_layers', type=int, default=12, help='number of action layers')
     parser.add_argument('--action_mask', action='store_true', help='mask action')
     parser.add_argument('--action_mask_ratio', type=float, default=0.1, help='mask ratio for action')
+    parser.add_argument('--wo_transformer_residual', action='store_true', help='use transformer residual')
 
     # data args
     parser.add_argument("--data_root", type=str, default="/mnt/data-rundong/robot_datasets/tokenizer-training")
