@@ -38,7 +38,7 @@ class ImageActionDataset(Dataset):
         self.normalize = args.normalize
         self.mean_std = {}
 
-        for i, dataset_name in enumerate(dataset_names):
+        for (dataset_name, image_root) in zip(dataset_names, dataset_roots):
             mean_std_path = os.path.join(self.data_root, dataset_name, 'mean_std.json')
             assert os.path.exists(mean_std_path), f'{mean_std_path} does not exist'
             mean_std = json.load(open(mean_std_path, 'r'))
@@ -54,9 +54,9 @@ class ImageActionDataset(Dataset):
                     if num_frames < self.length:
                         continue
                     if dataset_name == 'bridge2':
-                        instance_format = dataset_roots[i] + '/outputimage_' + str(instance_data['trajectory_id']) + '_{}_' + str(instance_data['view']) + '.png'
+                        instance_format = image_root + '/outputimage_' + str(instance_data['trajectory_id']) + '_{}_' + str(instance_data['view']) + '.png'
                     elif dataset_name == 'rt1':
-                        instance_format = dataset_roots[i] + '/outputimage_' + str(instance_data['trajectory_id']) + '_{}' + '.png'
+                        instance_format = image_root + '/outputimage_' + str(instance_data['trajectory_id']) + '_{}' + '.png'
                     else:
                         assert False, f'Unknown dataset name: {dataset_name}'
                     new_instance = {'dataset_name': dataset_name, 'image_paths': instance_format, 
