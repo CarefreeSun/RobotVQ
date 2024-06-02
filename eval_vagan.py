@@ -11,6 +11,7 @@ from pytorch_lightning.loggers import TensorBoardLogger
 import torch
 from PIL import Image
 from tqdm import tqdm
+import json
 # from tats.dataloader_img import get_image_dataloader
 
 
@@ -52,14 +53,18 @@ def main():
     parser.add_argument('--video_action_layers', type=int, default=12, help='number of action layers')
     parser.add_argument('--action_mask', action='store_true', help='mask action')
     parser.add_argument('--action_mask_ratio', type=float, default=0.1, help='mask ratio for action')
+    parser.add_argument('--wo_transformer_residual', action='store_true', help='use transformer residual')
 
     # data args
     parser.add_argument("--data_root", type=str, default="/mnt/data-rundong/robot_datasets/tokenizer-training")
     parser.add_argument("--dataset_names", nargs='+', type=str, 
-                        default=("bridge2", "rt1"))
+                        default=("bridge2", 
+                                # "rt1"
+                                ))
     parser.add_argument("--image_root", nargs='+', type=str, 
                         default=("/mnt/robotdata/bridge2/images_bridge",
-                                "/mnt/robotdata/RT1-images"))
+                                # "/mnt/robotdata/RT1-images"
+                                ))
     parser.add_argument("--normalize", action="store_true", help="normalize the actions")
     parser.add_argument("--sequence_length", type=int, default=6)
     parser.add_argument("--batch_size", type=int, default=4)
@@ -96,15 +101,21 @@ def main():
     image_recon_meter, action_recon_meter, perceptual_meter = AverageMeter(), AverageMeter(), AverageMeter()
 
     action_dim_wise_meter = [AverageMeter() for _ in range(7)]
+    action_dim_wise_normalized_meter = [AverageMeter() for _ in range(7)]
 
     # load the most recent checkpoint file
 
-    args.resume_from_checkpoint = '/mnt/data-rundong/VQ3D-vision-action/0515-action111-actionMask0.5/checkpoints/step_checkpoint-step_30000.ckpt'
+    args.resume_from_checkpoint = '/mnt/data-rundong/VQ3D-vision-action/0531-action111-bridgeRT-actionMask0.25-woResidual/checkpoints/step_checkpoint-step_20000.ckpt'
     
     assert args.resume_from_checkpoint is not None and os.path.exists(args.resume_from_checkpoint)
     ckpt = torch.load(args.resume_from_checkpoint, map_location='cpu')
     model.load_state_dict(ckpt['state_dict'])
     model.eval()
+
+    mean_std_path = '../data-rundong/robot_datasets/tokenizer-training/bridge2/mean_std.json'
+    mean, std = json.load(open(mean_std_path, 'r'))['mean'], json.load(open(mean_std_path, 'r'))['std']
+    mean[-1] = 0.
+    std[-1] = 1.
 
     os.makedirs(args.default_root_dir, exist_ok=True)
     
@@ -121,6 +132,7 @@ def main():
 
             for j in range(7):
                 action_dim_wise_meter[j].update(torch.abs(input_action[..., j] - x_recon_action[..., j]).mean().item(), bsz)
+                action_dim_wise_normalized_meter[j].update(torch.abs((input_action[..., j] * std[j] + mean[j]) - (x_recon_action[..., j] * std[j] + mean[j])).mean().item(), bsz)
 
             # save the x_recon
             # for j in range(x_recon.shape[0]):
@@ -138,12 +150,16 @@ def main():
 
             if i % args.log_interval == 0:
                 print(f'[{i}/{len(test_dataloader)}] Image Recon Loss: {image_recon_meter.avg:.4f} Action Recon Loss: {action_recon_meter.avg:.4f} Perceptual Loss: {perceptual_meter.avg:.4f}')
+                print(f'Normalized Image Recon Loss: {image_recon_meter.avg:.4f} Normalized Action Recon Loss: {action_recon_meter.avg:.4f} Perceptual Loss: {perceptual_meter.avg:.4f}')
                 for j in range(7):
                     print(f'Action Dim {j} Recon Loss: {action_dim_wise_meter[j].avg:.4f}')
+                    print(f'Normalized Action Dim {j} Recon Loss: {action_dim_wise_normalized_meter[j].avg:.4f}')
 
         print(f'Final Image Recon Loss: {image_recon_meter.avg:.4f} Action Recon Loss: {action_recon_meter.avg:.4f} Perceptual Loss: {perceptual_meter.avg:.4f}')
+        print(f'Normalized Image Recon Loss: {image_recon_meter.avg:.4f} Normalized Action Recon Loss: {action_recon_meter.avg:.4f} Perceptual Loss: {perceptual_meter.avg:.4f}')
         for j in range(7):
             print(f'Action Dim {j} Recon Loss: {action_dim_wise_meter[j].avg:.4f}')
+            print(f'Normalized Action Dim {j} Recon Loss: {action_dim_wise_normalized_meter[j].avg:.4f}')
 
 if __name__ == "__main__":
     main()
