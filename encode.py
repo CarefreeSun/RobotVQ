@@ -45,7 +45,7 @@ parser.add_argument('--no_random_restart', action='store_true')
 parser.add_argument('--norm_type', type=str, default='batch', choices=['batch', 'group'])
 parser.add_argument('--padding_type', type=str, default='replicate', choices=['replicate', 'constant', 'reflect', 'circular'])
 parser.add_argument('--action_dim', nargs='+', type=int, default=(1, 1, 1, 1, 1, 1, 1), help='number of action dimention, xyz, rpy, gripper')
-parser.add_argument('--action_activation', nargs='+', type=str, default=('tanh', 'tanh', 'tanh', 'tanh', 'tanh', 'tanh','sigmoid'), help='activation function for action')
+parser.add_argument('--action_activation', nargs='+', type=str, default=('none', 'none', 'none', 'none', 'none', 'none', 'sigmoid'), help='activation function for action')
 parser.add_argument('--action_hidden_dim', type=int, default=128, help='hidden dimention of action')
 parser.add_argument('--video_action_layers', type=int, default=12, help='number of action layers')
 
@@ -57,15 +57,20 @@ parser.add_argument('--image_channels', type=int, default=3)
 
 parser.add_argument('--src', type=str, default='../robot_datasets/tokenizer-training')
 parser.add_argument("--dataset_names", nargs='+', type=str, 
-                    default=("bridge2", "rt1"))
+                    default=("bridge2", 
+                            # "rt1"
+                            ))
 parser.add_argument("--image_root", nargs='+', type=str, 
                     default=("/mnt/robotdata/bridge2/images_bridge",
-                            "/mnt/robotdata/RT1-images"))
+                            # "/mnt/robotdata/RT1-images"
+                            ))
 parser.add_argument("--normalize", action="store_true", help="normalize the actions")
 parser.add_argument('--dst_dir', type=str, default='../robot_datasets/tokenized-0515mask0.5')
+parser.add_argument('--wo_transformer_residual', action='store_true', help='use transformer residual')
 parser.add_argument('--split', type=str, default='test')
 parser.add_argument('--gpu_id', type=int, default=0)
 parser.add_argument('--num_shards', type=int, default=8)
+parser.add_argument('--start_shard', type=int, default=0)
 parser.add_argument('--n_stacked_clips', type=int, default=10)
 
 parser.add_argument('--weight_path', type=str, default='/mnt/data-rundong/VQ3D-vision-action/0531-action111-bridge-noMask-woResidual/checkpoints/step_checkpoint-step_30000.ckpt')
@@ -75,9 +80,7 @@ device = f'cuda:{args.gpu_id}'
 
 assert args.sequence_length == 6
 
-if not args.normalize:
-    print("Warning!! Not normalizing actions")
-    sleep(5)
+assert args.normalize
 
 dst_path = os.path.join(args.dst_dir, args.split, f'{args.gpu_id}.jsonl')
 os.makedirs(os.path.dirname(dst_path), exist_ok=True)
@@ -102,7 +105,7 @@ with torch.no_grad():
             lines = f.readlines()
             num_data = len(lines)
             shard_size = num_data // args.num_shards + 1
-            for line in tqdm(lines[args.gpu_id * shard_size: args.gpu_id * shard_size + shard_size]):
+            for line in tqdm(lines[(args.gpu_id + args.start_shard) * shard_size: (args.gpu_id + args.start_shard) * shard_size + shard_size]):
 
                 instance_data = json.loads(line)
                 if dataset_name == 'bridge2':
