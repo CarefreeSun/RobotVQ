@@ -90,7 +90,7 @@ class ImageActionDataset(Dataset):
                 img = self.transform(img)
                 video.append(img)
                 if self.action:
-                    actions.append(data['actions'][i-1] if i > 0 else [0. for _ in range(6)] + data['actions'][0][-1])
+                    actions.append(data['actions'][i-1] if i > 0 else [0. for _ in range(6)] + [data['actions'][0][-1]])
         
         if self.action and self.mask_action:
             mask_indices = torch.randperm(self.length)[:int(self.length * self.mask_action_ratio)]

@@ -68,7 +68,7 @@ parser.add_argument('--gpu_id', type=int, default=0)
 parser.add_argument('--num_shards', type=int, default=8)
 parser.add_argument('--n_stacked_clips', type=int, default=10)
 
-parser.add_argument('--weight_path', type=str, default='/mnt/data-rundong/VQ3D-vision-action/0515-action111-actionMask0.5/checkpoints/step_checkpoint-step_30000.ckpt')
+parser.add_argument('--weight_path', type=str, default='/mnt/data-rundong/VQ3D-vision-action/0531-action111-bridge-noMask-woResidual/checkpoints/step_checkpoint-step_30000.ckpt')
 
 args = parser.parse_args()
 device = f'cuda:{args.gpu_id}'

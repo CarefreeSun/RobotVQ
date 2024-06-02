@@ -105,7 +105,7 @@ def main():
 
     # load the most recent checkpoint file
 
-    args.resume_from_checkpoint = '/mnt/data-rundong/VQ3D-vision-action/0531-action111-bridgeRT-actionMask0.25-woResidual/checkpoints/step_checkpoint-step_20000.ckpt'
+    args.resume_from_checkpoint = '/mnt/data-rundong/VQ3D-vision-action/0531-action111-bridge-noMask-woResidual/checkpoints/step_checkpoint-step_30000.ckpt'
     
     assert args.resume_from_checkpoint is not None and os.path.exists(args.resume_from_checkpoint)
     ckpt = torch.load(args.resume_from_checkpoint, map_location='cpu')
