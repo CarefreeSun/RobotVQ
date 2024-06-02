@@ -81,7 +81,8 @@ class ImageActionDataset(Dataset):
             img = self.transform(img)
             video = [img] * self.length
             if self.action:
-                actions = [[0. for _ in range(7)] for _ in range(self.length)]
+                initial_greeper_state = data['actions'][0][-1]
+                actions = [[0. for _ in range(6)] + [initial_greeper_state] for _ in range(self.length)]
         else:
             for i in range(start, start + self.length):
                 img_filename = data['image_paths'].format(data['image_indices'][i])
@@ -89,7 +90,7 @@ class ImageActionDataset(Dataset):
                 img = self.transform(img)
                 video.append(img)
                 if self.action:
-                    actions.append(data['actions'][i-1] if i > 0 else [0. for _ in range(7)])
+                    actions.append(data['actions'][i-1] if i > 0 else [0. for _ in range(6)] + data['actions'][0][-1])
         
         if self.action and self.mask_action:
             mask_indices = torch.randperm(self.length)[:int(self.length * self.mask_action_ratio)]

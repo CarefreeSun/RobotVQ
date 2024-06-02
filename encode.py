@@ -15,6 +15,7 @@ from tats import VQGANVisionAction, VideoData, get_image_action_dataloader, coun
 from tats.modules.callbacks import ImageLogger, VideoLogger
 from pytorch_lightning.strategies import DeepSpeedStrategy
 from torchvision import transforms
+from time import sleep
 
 parser = argparse.ArgumentParser()
 
@@ -60,6 +61,7 @@ parser.add_argument("--dataset_names", nargs='+', type=str,
 parser.add_argument("--image_root", nargs='+', type=str, 
                     default=("/mnt/robotdata/bridge2/images_bridge",
                             "/mnt/robotdata/RT1-images"))
+parser.add_argument("--normalize", action="store_true", help="normalize the actions")
 parser.add_argument('--dst_dir', type=str, default='../robot_datasets/tokenized-0515mask0.5')
 parser.add_argument('--split', type=str, default='test')
 parser.add_argument('--gpu_id', type=int, default=0)
@@ -72,6 +74,10 @@ args = parser.parse_args()
 device = f'cuda:{args.gpu_id}'
 
 assert args.sequence_length == 6
+
+if not args.normalize:
+    print("Warning!! Not normalizing actions")
+    sleep(5)
 
 dst_path = os.path.join(args.dst_dir, args.split, f'{args.gpu_id}.jsonl')
 os.makedirs(os.path.dirname(dst_path), exist_ok=True)
@@ -123,15 +129,14 @@ with torch.no_grad():
                             img = Image.open(img_filename)
                             img = transform(img)
                             video = [img] * args.sequence_length
-                            action = [[0. for _ in range(7)] for _ in range(args.sequence_length)]
+                            action = [[0. for _ in range(6)] + [instance_data['actions'][0][-1]] for _ in range(args.sequence_length)]
                         else:
                             for i in range(6*(start+stack_cnt) - 6, 6*(start+stack_cnt)):
                                 img_filename = instance_format.format(instance_data['image_indices'][i])
                                 img = Image.open(img_filename)
                                 img = transform(img)
                                 video.append(img)
-                                action.append(instance_data['actions'][i-1] if i > 0 else [0. for _ in range(7)])
-
+                                action.append(instance_data['actions'][i-1] if i > 0 else [0. for _ in range(6)] + [instance_data['actions'][0][-1]])
                         videos.append(torch.stack(video).permute(1,0,2,3)) # [C, T, H, W])
                         actions.append(torch.tensor(action)) # [T, 7]
 
