@@ -149,7 +149,7 @@ def main():
                 self.eval_log.flush()
 
     callbacks.append(ImageLogger(batch_frequency=200, max_images=4, clamp=True))
-    callbacks.append(VideoLogger(batch_frequency=200, max_videos=4, clamp=True))
+    # callbacks.append(VideoLogger(batch_frequency=200, max_videos=4, clamp=True))
     callbacks.append(StepCheckpointCallback(args))
 
     # load the most recent checkpoint file
