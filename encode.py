@@ -101,6 +101,10 @@ transform = transforms.Compose([
 
 with torch.no_grad():
     for (dataset_name, image_root) in zip(args.dataset_names, args.image_root):
+        mean_std_path = os.path.join(args.src, dataset_name, 'mean_std.json')
+        mean, std = json.load(open(mean_std_path, 'r'))['mean'], json.load(open(mean_std_path, 'r'))['std']
+        mean[-1] = 0.
+        std[-1] = 1.
         src_filepath = os.path.join(args.src, dataset_name, f'{args.split}.jsonl')
         with open(src_filepath, 'r') as f:
             lines = f.readlines()
@@ -146,6 +150,8 @@ with torch.no_grad():
 
                     videos = torch.stack(videos).to(device)
                     actions = torch.stack(actions).to(device)
+                    if args.normalize:
+                        actions = (actions - torch.tensor(mean).to(device)) / torch.tensor(std).to(device)
                     n_stacked = videos.shape[0]
 
                     recon_loss, recon_loss_action, _, _, vq_output, vq_output_action, _ = model(videos, actions)
