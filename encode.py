@@ -156,7 +156,7 @@ with torch.no_grad():
                         actions = (actions - torch.tensor(mean).to(device)) / torch.tensor(std).to(device)
                     n_stacked = videos.shape[0]
 
-                    recon_loss, recon_loss_action, _, _, vq_output, vq_output_action, _ = model(videos, actions)
+                    _, _, vq_output, vq_output_action = model(videos, actions)
 
                     video_tokens, action_tokens = vq_output['encodings'].reshape(n_stacked, -1), vq_output_action['encodings'].reshape(n_stacked, -1)
 
