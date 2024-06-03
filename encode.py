@@ -11,7 +11,7 @@ import os
 import argparse
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import ModelCheckpoint
-from tats import VQGANVisionAction, VideoData, get_image_action_dataloader, count_parameters
+from tats import VQGANVisionActionEval
 from tats.modules.callbacks import ImageLogger, VideoLogger
 from pytorch_lightning.strategies import DeepSpeedStrategy
 from torchvision import transforms
@@ -88,9 +88,11 @@ os.makedirs(os.path.dirname(dst_path), exist_ok=True)
 dst_file = open(dst_path, 'w')
 error_log = open(os.path.join(args.dst_dir, args.split, f'error_{args.gpu_id+args.start_shard}.log'), 'a')
 
-model = VQGANVisionAction(args)
+model = VQGANVisionActionEval(args)
 state_dict = torch.load(args.weight_path, map_location='cpu')['state_dict']
-model.load_state_dict(state_dict)
+result = model.load_state_dict(state_dict, strict=False)
+for k in result.missing_keys:
+    assert 'discriminator' in k or 'perceptual_model' in k
 model = model.to(device).eval()
 
 transform = transforms.Compose([
