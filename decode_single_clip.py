@@ -9,11 +9,7 @@ from PIL import Image
 
 import os
 import argparse
-import pytorch_lightning as pl
-from pytorch_lightning.callbacks import ModelCheckpoint
-from tats import VQGANVisionActionEval
-from tats.modules.callbacks import ImageLogger, VideoLogger
-from pytorch_lightning.strategies import DeepSpeedStrategy
+from tats import VQGANVisionActionEval, AverageMeter
 from torchvision import transforms
 
 parser = argparse.ArgumentParser()
@@ -48,7 +44,7 @@ parser.add_argument("--num_workers", type=int, default=8)
 parser.add_argument("--resolution", type=int, default=256)
 parser.add_argument('--image_channels', type=int, default=3)
 
-parser.add_argument("--filepath", type=str, default="../robot_datasets/0531-action111-bridge-noMask-woResidual/train/8.jsonl")
+parser.add_argument("--filepath", type=str, default="../robot_datasets/0531-action111-bridge-noMask-woResidual/test_with_gt_action/8.jsonl")
 parser.add_argument('--dst_dir', type=str, default='../eval_decoded/')
 parser.add_argument('--gpu_id', type=int, default=0)
 
@@ -73,49 +69,61 @@ transform = transforms.Compose([
     transforms.Normalize((0.5, 0.5, 0.5), (1., 1., 1.)) # To [-0.5, 0.5]
 ])
 
+assert args.normalize and args.wo_transformer_residual
 mean_std_path = os.path.join('../robot_datasets/tokenizer-training/bridge2', 'mean_std.json')
 mean, std = json.load(open(mean_std_path, 'r'))['mean'], json.load(open(mean_std_path, 'r'))['std']
 mean[-1] = 0.
 std[-1] = 1.
 
+action_dim_wise_normalized_meter = [AverageMeter() for _ in range(7)]
+
 with torch.no_grad():
-    for line in tqdm(lines):
+    for line in tqdm(lines[:20]):
         instance_data = json.loads(line)
         video_tokens = instance_data['video_tokens'] # 768 (3*256)
         action_tokens = instance_data['action_tokens']
         trajectory_id = instance_data['trajectory_id']
         view_id = instance_data['view']
         start_frame = instance_data['start_frame']
+        action_gt = torch.tensor(instance_data['gt_actions']) # (6, 7)
 
         # decode video tokens
         video_tokens = torch.tensor(video_tokens, device=device).unsqueeze(0).reshape(1, 3, 16, 16)
 
-        input_frames = model.decode_video(video_tokens).squeeze(0).permute(1,0,2,3).detach().cpu() # 6, 3, 256, 256
+        recon_frames = model.decode_video(video_tokens).squeeze(0).permute(1,0,2,3).detach().cpu() # 6, 3, 256, 256
 
         action_tokens = torch.tensor(action_tokens, device=device).unsqueeze(0).reshape(1, 6, 7)
 
-        input_actions = model.decode_action(action_tokens).squeeze(0).detach().cpu() # 6, 7
+        recon_actions = model.decode_action(action_tokens).squeeze(0).detach().cpu() # 6, 7
         if args.normalize:
-            input_actions = input_actions * torch.tensor(std).unsqueeze(0) + torch.tensor(mean).unsqueeze(0)
+            recon_actions = recon_actions * torch.tensor(std).unsqueeze(0) + torch.tensor(mean).unsqueeze(0)
 
         dst_dir = os.path.join(args.dst_dir, f'{trajectory_id}_{view_id}_{start_frame}')
         os.makedirs(dst_dir, exist_ok=True)
         # save the input images
-        for i, frame in enumerate(input_frames):
+        for i, frame in enumerate(recon_frames):
             img = (frame + 0.5).clamp(0,1).numpy().transpose(1, 2, 0)
             img = (img * 255).astype(np.uint8)
             img = Image.fromarray(img)
             img.save(os.path.join(dst_dir, f'{i}_input.png'))
+
+        for i, meter in enumerate(action_dim_wise_normalized_meter):
+            meter.update((recon_actions[:, i] - action_gt[:, i]).abs().mean().item())
+
         # save the input actions
         ret = {}
         ret['trajectory_id'] = trajectory_id
         ret['view_id'] = view_id
         ret['start_frame'] = start_frame
-        ret['input_actions'] = input_actions.tolist()
+        ret['recon_actions'] = recon_actions.tolist()
+        ret['gt_actions'] = action_gt.tolist()
 
         with open(os.path.join(dst_dir, 'preds.json'), 'w') as f:
             json.dump(ret, f)
 
+print('action_dim_wise_normalized_meter')
+for i, meter in enumerate(action_dim_wise_normalized_meter):
+    print(f'{i}: {meter.avg}')
 
         
 

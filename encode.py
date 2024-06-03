@@ -80,7 +80,7 @@ device = f'cuda:{args.gpu_id}'
 
 assert args.sequence_length == 6
 
-assert args.normalize
+assert args.normalize and args.wo_transformer_residual
 
 args.dst_dir = '../robot_datasets/' + args.weight_path.split('/')[-3]
 dst_path = os.path.join(args.dst_dir, args.split, f'{args.gpu_id+args.start_shard}.jsonl')
