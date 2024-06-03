@@ -22,16 +22,17 @@ for i in range(args.start_shard, args.start_shard+args.num_shards):
     # read the next line
     line = f.readline()
     instance_data = json.loads(line)
-    trajectory_id = instance_data['trajectory_id']
-    view = instance_data['view']
     while True:
         new_line = f.readline()
         if not new_line:
             break
+        trajectory_id = instance_data['trajectory_id']
+        view = instance_data['view']
         new_instance_data = json.loads(new_line)
-        new_trajectory_id = json.loads(new_line)['trajectory_id']
-        new_view = json.loads(new_line)['view']
+        new_trajectory_id = new_instance_data['trajectory_id']
+        new_view = new_instance_data['view']
         if not (new_trajectory_id == trajectory_id and new_view == view):
+            instance_data = copy.deepcopy(new_instance_data)
             continue
         '''
         create a new data that stack these two instances, with the following fields
