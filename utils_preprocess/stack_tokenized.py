@@ -4,15 +4,16 @@ import json
 import copy
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--src', type=str, default='../bridge2_processed/tokenized-0515mask0.5/')
-parser.add_argument('--dst', type=str, default='../bridge2_processed/tokenized-0515mask0.5-stacked/')
+parser.add_argument('--src', type=str, default='../robot_datasets/0531-action111-bridge-noMask-woResidual_tokenized/')
+parser.add_argument('--dst', type=str, default='../robot_datasets/0531-action111-bridge-noMask-woResidual_tokenized_stacked/')
 parser.add_argument('--split', type=str, default='test')
+parser.add_argument('--start_shard', type=int, default=0)
 parser.add_argument('--num_shards', type=int, default=8)
 
 args = parser.parse_args()
 
 src_path = os.path.join(args.src, args.split)
-for i in range(args.num_shards):
+for i in range(args.start_shard, args.start_shard+args.num_shards):
     src_filepath = os.path.join(src_path, f'{i}.jsonl')
     f = open(src_filepath, 'r')
     dst_filepath = os.path.join(args.dst, args.split, f'{i}.jsonl')
@@ -25,9 +26,9 @@ for i in range(args.num_shards):
     view = instance_data['view']
     while True:
         new_line = f.readline()
-        new_instance_data = json.loads(new_line)
         if not new_line:
             break
+        new_instance_data = json.loads(new_line)
         new_trajectory_id = json.loads(new_line)['trajectory_id']
         new_view = json.loads(new_line)['view']
         if not (new_trajectory_id == trajectory_id and new_view == view):
