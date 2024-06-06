@@ -2,11 +2,18 @@ import json
 import random
 import os
 from tqdm import tqdm
+import argparse
 
-filepath = '../robot_datasets/tokenizer-training/rt1/formatted_abs.jsonl'
+parser = argparse.ArgumentParser()
+parser.add_argument('--dataset_name', type=str, default='bridge2')
+args = parser.parse_args()
 
-train_split_path = '../robot_datasets/tokenizer-training/rt1/train.jsonl'
-test_split_path = '../robot_datasets/tokenizer-training/rt1/test.jsonl'
+suffix = '_abs' if args.dataset_name == 'rt1' else ''
+
+filepath = f'../robot_datasets/tokenizer-training/{args.dataset_name}/formatted{suffix}.jsonl'
+
+train_split_path = f'../robot_datasets/tokenizer-training/{args.dataset_name}/train.jsonl'
+test_split_path = f'../robot_datasets/tokenizer-training/{args.dataset_name}/test.jsonl'
 
 os.makedirs(os.path.dirname(train_split_path), exist_ok=True)
 
