@@ -52,24 +52,25 @@ def main():
     parser.add_argument('--wo_transformer_residual', action='store_true', help='use transformer residual')
 
     # data args
-    parser.add_argument("--data_root", type=str, default="/mnt/data-rundong/robot_datasets/tokenizer-training")
+    parser.add_argument("--data_root", type=str, default="/home/v-rundongluo/data-rundong/robot_datasets/tokenizer-training")
     parser.add_argument("--dataset_names", nargs='+', type=str, 
                         default=("bridge2", 
                                 # "rt1"
                                 ))
     parser.add_argument("--image_root", nargs='+', type=str, 
-                        default=("/mnt/robotdata/bridge2/images_bridge",
+                        default=("/home/v-rundongluo/robotdata/bridge2/images_bridge",
                                 # "/mnt/robotdata/RT1-images"
                                 ))
     parser.add_argument("--normalize", action="store_true", help="normalize the actions")
     parser.add_argument("--sequence_length", type=int, default=6)
-    parser.add_argument("--batch_size", type=int, default=4)
+    parser.add_argument("--batch_size", type=int, default=1)
     parser.add_argument("--num_workers", type=int, default=1)
     parser.add_argument("--resolution", type=int, default=256)
     parser.add_argument('--image_channels', type=int, default=3)
     parser.add_argument('--val_check_interval', type=int, default=1.0)
     parser.add_argument('--log_interval', type=int, default=20)
     parser.add_argument('--save_step_frequency', type=int, default=5000)
+    parser.add_argument('--weight_path', type=str, default='/home/v-rundongluo/data-rundong/VQ3D-vision-action/0531-action111-bridge-noMask-woResidual/checkpoints/step_checkpoint-step_30000.ckpt')
 
     parser.add_argument('--gpu_id', type=int, default=0)
 
@@ -85,9 +86,8 @@ def main():
     except:
         pass
 
-    # train_dataloader = get_image_dataloader(args, split='train')
-    # print(args.action_activation)
-    # exit()
+    assert args.normalize and args.wo_transformer_residual
+
     test_dataloader = get_image_action_dataloader(args, split='test', action=True)
 
     device = f'cuda:{args.gpu_id}'
@@ -100,18 +100,14 @@ def main():
     action_dim_wise_normalized_meter = [AverageMeter() for _ in range(7)]
 
     # load the most recent checkpoint file
-
-    args.resume_from_checkpoint = '/mnt/data-rundong/VQ3D-vision-action/0531-action111-bridge-noMask-woResidual/checkpoints/step_checkpoint-step_30000.ckpt'
     
-    assert args.resume_from_checkpoint is not None and os.path.exists(args.resume_from_checkpoint)
-    ckpt = torch.load(args.resume_from_checkpoint, map_location='cpu')
+    assert os.path.exists(args.weight_path)
+    ckpt = torch.load(args.weight_path, map_location='cpu')
     model.load_state_dict(ckpt['state_dict'])
     model.eval()
 
     mean_std_path = '../data-rundong/robot_datasets/tokenizer-training/bridge2/mean_std.json'
     mean, std = json.load(open(mean_std_path, 'r'))['mean'], json.load(open(mean_std_path, 'r'))['std']
-    mean[-1] = 0.
-    std[-1] = 1.
 
     os.makedirs(args.default_root_dir, exist_ok=True)
     

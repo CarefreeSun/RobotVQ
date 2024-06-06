@@ -2,11 +2,11 @@ import os
 import json
 from tqdm import tqdm
 
-src_root = '../robot_datasets/0531-action111-bridge-noMask-woResidual/train/'
-formatted_file = '../robot_datasets/tokenizer-training/bridge2/train.jsonl'
+src_root = '../robot_datasets/0531-action111-bridge-noMask-woResidual_tokenized_stacked/test/'
+formatted_file = '../robot_datasets/tokenizer-training/bridge2/formatted.jsonl'
 
-dst_root = '../robot_datasets/0531-action111-bridge-noMask-woResidual/train_with_gt_action/'
-pred_next = False
+dst_root = '../robot_datasets/0531-action111-bridge-noMask-woResidual_tokenized_stacked/test_with_gt_action/'
+pred_next = True
 os.makedirs(dst_root, exist_ok=True)
 
 # read the formatted file and store the data in a dictionary
@@ -20,8 +20,8 @@ with open(formatted_file, 'r') as f:
         action_data = instance_data['actions']
         formatted_data[(trajectory_id, view)] = action_data
 
-num_shards = 1
-start_shard = 8
+num_shards = 16
+start_shard = 0
 for num_shard in range(start_shard, start_shard+num_shards):
     f_dst = open(os.path.join(dst_root, f'{num_shard}.jsonl'), 'w')
     file_path = os.path.join(src_root, f'{num_shard}.jsonl')
