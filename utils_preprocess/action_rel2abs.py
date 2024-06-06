@@ -35,8 +35,8 @@ def rel2abs_gripper_actions(actions: torch.Tensor):
     new_actions = new_actions.float() / 2 + 0.5
     return new_actions
 
-src_filepath = '../robot_datasets/tokenizer-training/rt1/rt1_formatted_wo_description.jsonl'
-dst_filepath = '../robot_datasets/tokenizer-training/rt1/rt1_formatted_wo_description_action_abs.jsonl'
+src_filepath = '../robot_datasets/tokenizer-training/rt1/formatted.jsonl'
+dst_filepath = '../robot_datasets/tokenizer-training/rt1/formatted_abs.jsonl'
 
 f = open(src_filepath, 'r')
 lines = f.readlines()

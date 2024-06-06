@@ -2,9 +2,9 @@ import os
 import tqdm
 import json
 
-filepath = '/mnt/robotdata/bridge2/bridge2_gpt4v_annotated_merged_output_v2.jsonl'
+filepath = '/mnt/robotdata/RT-1/rt1_gpt4v_annotated_merged_output_v1.jsonl'
 
-dst_filepath = './bridge2_processed/formatted.jsonl'
+dst_filepath = '../robot_datasets/tokenizer-training/rt1/formatted.jsonl'
 
 f = open(filepath, 'r')
 os.makedirs(os.path.dirname(dst_filepath), exist_ok=True)
@@ -47,6 +47,10 @@ for line in tqdm.tqdm(lines):
                     data_new['descriptions'][(frame_numbers - 1) // 6 * 6 + 6 - 1] = data['descriptions'][key]
         elif key == 'frame_number':
             data_new['frame_number'] = (frame_numbers - 1) // 6 * 6 + 6
+        elif key == 'trajectory_id':
+            data_new[key] = data[key]
+            if 'view' not in data:
+                data_new['view'] = 0
         else:
             data_new[key] = data[key]
 

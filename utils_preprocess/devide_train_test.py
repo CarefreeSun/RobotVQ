@@ -3,7 +3,7 @@ import random
 import os
 from tqdm import tqdm
 
-filepath = '../robot_datasets/tokenizer-training/rt1/rt1_formatted_wo_description_action_abs.jsonl'
+filepath = '../robot_datasets/tokenizer-training/rt1/formatted_abs.jsonl'
 
 train_split_path = '../robot_datasets/tokenizer-training/rt1/train.jsonl'
 test_split_path = '../robot_datasets/tokenizer-training/rt1/test.jsonl'
