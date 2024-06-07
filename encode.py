@@ -58,11 +58,11 @@ parser.add_argument('--image_channels', type=int, default=3)
 parser.add_argument('--src', type=str, default='../robot_datasets/tokenizer-training')
 parser.add_argument("--dataset_names", nargs='+', type=str, 
                     default=("bridge2", 
-                            # "rt1"
+                            "rt1"
                             ))
 parser.add_argument("--image_root", nargs='+', type=str, 
                     default=("/mnt/robotdata/bridge2/images_bridge",
-                            # "/mnt/robotdata/RT1-images"
+                            "/mnt/robotdata/RT1-images"
                             ))
 parser.add_argument("--normalize", action="store_true", help="normalize the actions")
 parser.add_argument('--dst_dir', type=str, default='')
@@ -82,7 +82,7 @@ assert args.sequence_length == 6
 
 assert args.normalize and args.wo_transformer_residual
 
-args.dst_dir = '../robot_datasets/' + args.weight_path.split('/')[-3] + '_tokenized_debug'
+args.dst_dir = '../robot_datasets/' + args.weight_path.split('/')[-3] + '_tokenized'
 dst_path = os.path.join(args.dst_dir, args.split, f'{args.gpu_id+args.start_shard}.jsonl')
 os.makedirs(os.path.dirname(dst_path), exist_ok=True)
 dst_file = open(dst_path, 'w')
