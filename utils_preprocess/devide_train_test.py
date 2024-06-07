@@ -6,6 +6,7 @@ import argparse
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--dataset_name', type=str, default='bridge2')
+parser.add_argument('--ratio', type=float, default=0.98)
 args = parser.parse_args()
 
 suffix = '_abs' if args.dataset_name == 'rt1' else ''

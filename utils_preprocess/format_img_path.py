@@ -1,10 +1,15 @@
 import os
 import tqdm
 import json
+import argparse
 
-filepath = '/home/v-rundongluo/robotdata/bridge2/bridge2_gpt4v_annotated_merged_output_v2.jsonl'
+parser = argparse.ArgumentParser()
+parser.add_argument('--input', type=str, default='/home/v-rundongluo/robotdata/bridge2/bridge2_gpt4v_annotated_merged_output_v2.jsonl')
+parser.add_argument('--output', type=str, default='../robot_datasets/tokenizer-training/bridge2/formatted.jsonl')
+args = parser.parse_args()
 
-dst_filepath = '../robot_datasets/tokenizer-training/bridge2/formatted.jsonl'
+filepath = args.input
+dst_filepath = args.output
 
 f = open(filepath, 'r')
 os.makedirs(os.path.dirname(dst_filepath), exist_ok=True)
