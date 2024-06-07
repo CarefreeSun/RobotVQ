@@ -83,10 +83,6 @@ assert args.sequence_length == 6
 assert args.normalize and args.wo_transformer_residual
 
 args.dst_dir = '../robot_datasets/' + args.weight_path.split('/')[-3] + '_tokenized'
-dst_path = os.path.join(args.dst_dir, args.split, f'{args.gpu_id+args.start_shard}.jsonl')
-os.makedirs(os.path.dirname(dst_path), exist_ok=True)
-dst_file = open(dst_path, 'w')
-error_log = open(os.path.join(args.dst_dir, args.split, f'error_{args.gpu_id+args.start_shard}.log'), 'a')
 
 model = VQGANVisionActionEval(args)
 state_dict = torch.load(args.weight_path, map_location='cpu')['state_dict']
@@ -103,6 +99,12 @@ transform = transforms.Compose([
 
 with torch.no_grad():
     for (dataset_name, image_root) in zip(args.dataset_names, args.image_root):
+
+        dst_path = os.path.join(args.dst_dir, dataset_name, args.split, f'{args.gpu_id+args.start_shard}.jsonl')
+        os.makedirs(os.path.dirname(dst_path), exist_ok=True)
+        dst_file = open(dst_path, 'w')
+        error_log = open(os.path.join(args.dst_dir, dataset_name, args.split, f'error_{args.gpu_id+args.start_shard}.log'), 'a')
+
         mean_std_path = os.path.join(args.src, dataset_name, 'mean_std.json')
         mean, std = json.load(open(mean_std_path, 'r'))['mean'], json.load(open(mean_std_path, 'r'))['std']
         mean[-1] = 0.
