@@ -19,7 +19,7 @@ def main():
     # trainer args
     parser.add_argument("--nodes", type=int, default=1, help="nodes")
     parser.add_argument("--devices", type=int, default=8, help="e.g., gpu number")
-    parser.add_argument("--default_root_dir", type=str, default="logs/0512-action1111111")
+    parser.add_argument("--default_root_dir", type=str, required=True, help="default_root_dir")
     parser.add_argument("--max_steps", type=int, default=100000, help="max_steps")
     parser.add_argument("--resume_from_checkpoint", type=str, default=None, help="resume from checkpoint")
     parser.add_argument("--load_checkpoint", type=str, default=None, help="load vision model")
@@ -38,6 +38,7 @@ def main():
     parser.add_argument('--image_gan_weight', type=float, default=0.2)
     parser.add_argument('--video_gan_weight', type=float, default=0.2)
     parser.add_argument('--l1_weight', type=float, default=4.0)
+    parser.add_arugment('--l1_action_weight', type=float, default=10.0)
     parser.add_argument('--gan_feat_weight', type=float, default=4.0)
     parser.add_argument('--perceptual_weight', type=float, default=4.0)
     parser.add_argument('--i3d_feat', action='store_true')

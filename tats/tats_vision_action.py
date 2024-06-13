@@ -85,6 +85,7 @@ class VQGANVisionAction(pl.LightningModule):
         self.perceptual_weight = args.perceptual_weight
 
         self.l1_weight = args.l1_weight
+        self.l1_action_weight = args.l1_action_weight
         self.save_hyperparameters()
 
     @property
@@ -172,7 +173,7 @@ class VQGANVisionAction(pl.LightningModule):
         x_recon_action = self.action_decoder(vq_embeddings_action.squeeze(-1).permute(0, 2, 1, 3)) # B, T, embed_dim, 7
 
         recon_loss = F.l1_loss(x_recon, x) * self.l1_weight
-        recon_loss_action = F.l1_loss(x_recon_action, x_action) * self.l1_weight
+        recon_loss_action = F.l1_loss(x_recon_action, x_action) * self.l1_action_weight
 
         frame_idx = torch.randint(0, T, [B]).to(x.device)
         frame_idx_selected = frame_idx.reshape(-1, 1, 1, 1, 1).repeat(1, C, 1, H, W)
