@@ -61,7 +61,7 @@ def main():
                         default=("bridge2", "rt1"))
     parser.add_argument("--image_root", nargs='+', type=str, 
                         default=("/mnt/robotdata/bridge2/images_bridge",
-                                "/mnt/robotdata/RT1-images"))
+                                "/mnt/robotdata/RT1/RT1-images"))
     parser.add_argument("--normalize", action="store_true", help="normalize the actions")
     parser.add_argument("--sequence_length", type=int, default=6)
     parser.add_argument("--batch_size", type=int, default=4)
