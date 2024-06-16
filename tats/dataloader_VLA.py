@@ -14,7 +14,7 @@ class ImageActionDataset(Dataset):
     we batchify the images with the same scene_id and view_id into a video clip with specified length
     each time when calling __getitem__, we randomly sample a video clip from the dataset
     '''
-    def __init__(self, args, action=False, split='train', transform=None):
+    def __init__(self, args, action=False, split='train', transform=None, return_mean_std=False):
         self.data_root = args.data_root
         # self.data_root = args.data_root
         if transform is None:
@@ -36,16 +36,17 @@ class ImageActionDataset(Dataset):
         dataset_roots = args.image_root
 
         self.normalize = args.normalize
-        self.mean_std = {}
+        # self.mean_std = {}
+        self.return_mean_std = return_mean_std
 
         for (dataset_name, image_root) in zip(dataset_names, dataset_roots):
-            mean_std_path = os.path.join(self.data_root, dataset_name, 'mean_std.json')
-            assert os.path.exists(mean_std_path), f'{mean_std_path} does not exist'
-            mean_std = json.load(open(mean_std_path, 'r'))
-            mean, std = mean_std['mean'], mean_std['std']
-            mean[-1] = 0.
-            std[-1] = 1.
-            self.mean_std[dataset_name] = {'mean': mean, 'std': std}
+            # mean_std_path = os.path.join(self.data_root, dataset_name, 'mean_std.json')
+            # assert os.path.exists(mean_std_path), f'{mean_std_path} does not exist'
+            # mean_std = json.load(open(mean_std_path, 'r'))
+            # mean, std = mean_std['mean'], mean_std['std']
+            # mean[-1] = 0.
+            # std[-1] = 1.
+            # self.mean_std[dataset_name] = {'mean': mean, 'std': std}
 
             with open(os.path.join(self.data_root, dataset_name, f'{split}.jsonl'), 'r') as f:
                 for line in f:
@@ -60,7 +61,8 @@ class ImageActionDataset(Dataset):
                     else:
                         assert False, f'Unknown dataset name: {dataset_name}'
                     new_instance = {'dataset_name': dataset_name, 'image_paths': instance_format, 
-                                    'frame_number': num_frames, 'image_indices': instance_data['image_indices']}
+                                    'frame_number': num_frames, 'image_indices': instance_data['image_indices'],
+                                    'mean': instance_data['mean'], 'std': instance_data['std']}
                     if self.action:
                         new_instance['actions'] = instance_data['actions']
                     self.filenames.append(new_instance)
@@ -74,6 +76,8 @@ class ImageActionDataset(Dataset):
         start = torch.randint(-1, data['frame_number'] - self.length + 1, (1,)).item()
         video = []
         actions = []
+
+        mean, std = torch.tensor(data['mean']), torch.tensor(data['std'])
 
         if start == -1: # video will be self.length duplicates of frame 0, and each action entry will be [0] * 7
             img_filename = data['image_paths'].format(data['image_indices'][0])
@@ -102,10 +106,10 @@ class ImageActionDataset(Dataset):
         if self.normalize:
             if self.action:
                 actions = torch.tensor(actions)
-                actions = (actions - torch.tensor(self.mean_std[data['dataset_name']]['mean'])) / torch.tensor(self.mean_std[data['dataset_name']]['std'])
+                actions = (actions - mean) / std
                 if self.mask_action:
                     actions_masked = torch.tensor(actions_masked)
-                    actions_masked = (actions_masked - torch.tensor(self.mean_std[data['dataset_name']]['mean'])) / torch.tensor(self.mean_std[data['dataset_name']]['std'])
+                    actions_masked = (actions_masked - mean) / std
 
         ret = {}
         ret['video'] = torch.stack(video).permute(1, 0, 2, 3) # (C, T, H, W)
@@ -113,6 +117,9 @@ class ImageActionDataset(Dataset):
             ret['actions'] = actions # (T, 7), 7 is the number of action dimension
             if self.mask_action:
                 ret['actions_masked'] = actions_masked
+        if self.return_mean_std:
+            ret['mean'] = mean
+            ret['std'] = std
         return ret
 
         # key = self.keys[index]
@@ -130,8 +137,8 @@ class ImageActionDataset(Dataset):
         # video = torch.stack(video).permute(1, 0, 2, 3) # (C, T, H, W)
         # return {'video': video, 'key': key}
 
-def get_image_action_dataloader(args, split='train', action=False):
-    dataset = ImageActionDataset(args, split=split, action=action)
+def get_image_action_dataloader(args, split='train', action=False, return_mean_std=False):
+    dataset = ImageActionDataset(args, split=split, action=action, return_mean_std=return_mean_std)
     dataloader = torch.utils.data.DataLoader(dataset, batch_size=args.batch_size, 
                                              num_workers=args.num_workers,
                                              shuffle=True if split == 'train' else False)
