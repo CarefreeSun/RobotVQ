@@ -7,7 +7,7 @@ from .base_vision import TimmViTBackbone
 # Registry =>> Supported DINOv2 Vision Backbones (from TIMM) =>> Note:: Using DINOv2 w/ Registers!
 #   => Reference: https://arxiv.org/abs/2309.16588
 DINOv2_VISION_BACKBONES = {"dinov2-vit-l": "vit_large_patch14_reg4_dinov2.lvd142m"}
-DINOv2_MODEL_PATH = {"dinov2-vit-l": "/mnt/data-rundong/huggingface/hub/models--dinov2/model.safetensors"}
+DINOv2_MODEL_PATH = {"dinov2-vit-l": "/mnt/data-rundong/huggingface/hub/dinov2.safetensors"}
 
 
 class DinoV2ViTBackbone(TimmViTBackbone):
