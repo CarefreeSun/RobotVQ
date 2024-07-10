@@ -36,7 +36,7 @@ def vanilla_d_loss(logits_real, logits_fake):
         torch.mean(torch.nn.functional.softplus(logits_fake)))
     return d_loss
 
-class VQGANVisionAction(pl.LightningModule):
+class VQGANDinoV2Action(pl.LightningModule):
     '''
     Add an action encoder to the Video VQGAN model
     the action space is encoded by a separate encoder, and decoded by a separate decoder

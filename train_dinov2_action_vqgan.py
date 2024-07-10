@@ -4,7 +4,7 @@ import os
 import argparse
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import ModelCheckpoint
-from tats import VQGANVisionAction, VideoData, get_image_action_dataloader, count_parameters
+from tats import VQGANVisionAction, VQGANDinoV2Action, VideoData, get_image_action_dataloader, count_parameters
 from tats.modules.callbacks import ImageLogger, VideoLogger
 from pytorch_lightning.strategies import DeepSpeedStrategy, DDPStrategy
 from pytorch_lightning.loggers import TensorBoardLogger
@@ -89,7 +89,7 @@ def main():
 
     args.lr = args.lr * math.sqrt(args.nodes * args.devices * args.batch_size)
 
-    model = VQGANVisionAction(args)
+    model = VQGANDinoV2Action(args)
     if args.load_checkpoint is not None:
         state_dict = torch.load(args.load_checkpoint, map_location='cpu')['state_dict']
         load_result = model.load_state_dict(state_dict, strict=False)
