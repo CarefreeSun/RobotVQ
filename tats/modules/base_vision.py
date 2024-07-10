@@ -96,19 +96,24 @@ class TimmViTBackbone(VisionBackbone, ABC):
         self,
         vision_backbone_id: str,
         timm_path_or_url: str,
+        timm_model_path: str,
         image_resize_strategy: str,
         default_image_size: int = 224,
         override_act_layer: Optional[str] = None,
     ) -> None:
         super().__init__(vision_backbone_id, image_resize_strategy, default_image_size=default_image_size)
         self.timm_path_or_url = timm_path_or_url
+        self.timm_model_path = timm_model_path
         self.override_act_layer = override_act_layer
         self.dtype = torch.bfloat16
 
         # Initialize Featurizer (ViT) by downloading from HF / TIMM Hub if necessary
         if self.override_act_layer is None:
+            default_cfg = timm.create_model(
+                self.timm_path_or_url, pretrained=False, num_classes=0, img_size=self.default_image_size).default_cfg
+            default_cfg['file'] = self.timm_model_path # cannot access default path set by timm since it is in /root/.cache
             self.featurizer: VisionTransformer = timm.create_model(
-                self.timm_path_or_url, pretrained=True, num_classes=0, img_size=self.default_image_size
+                self.timm_path_or_url, pretrained=True, num_classes=0, img_size=self.default_image_size, pretrained_cfg=default_cfg
             )
         else:
             self.featurizer: VisionTransformer = timm.create_model(
