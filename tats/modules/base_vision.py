@@ -111,7 +111,7 @@ class TimmViTBackbone(VisionBackbone, ABC):
         if self.override_act_layer is None:
             default_cfg = timm.create_model(
                 self.timm_path_or_url, pretrained=False, num_classes=0, img_size=self.default_image_size).default_cfg
-            default_cfg['file'] = self.timm_model_path # cannot access default path set by timm since it is in /root/.cache
+            default_cfg['file'] = self.timm_model_path # cannot download it on azure, manually download and set the path
             self.featurizer: VisionTransformer = timm.create_model(
                 self.timm_path_or_url, pretrained=True, num_classes=0, img_size=self.default_image_size, pretrained_cfg=default_cfg
             )
