@@ -12,7 +12,7 @@ import torch.nn.functional as F
 import torch.distributed as dist
 
 from .utils import shift_dim, adopt_weight, comp_getattr
-from .modules import LPIPS, Codebook
+from .modules import LPIPS, Codebook, DinoV2ViTBackbone
 
 def silu(x):
     return x*torch.sigmoid(x)
@@ -55,7 +55,7 @@ class VQGANVisionAction(pl.LightningModule):
             args.padding_type = 'replicate'
         self.encoder = Encoder(args.n_hiddens, args.downsample, args.image_channels, args.norm_type, args.padding_type)
         self.decoder = Decoder(args.n_hiddens, args.downsample, args.image_channels, args.norm_type)
-        self.enc_out_ch = self.encoder.out_channels
+        self.enc_out_ch = self.encoder.final_out_dim
         self.pre_vq_conv = SamePadConv3d(self.enc_out_ch, args.embedding_dim, 1, padding_type=args.padding_type)
         self.post_vq_conv = SamePadConv3d(args.embedding_dim, self.enc_out_ch, 1)
 
@@ -345,37 +345,59 @@ def Normalize(in_channels, norm_type='group'):
 
 
 class Encoder(nn.Module):
+    """
+    DinoV2
+    """
     def __init__(self, n_hiddens, downsample, image_channel=3, norm_type='group', padding_type='replicate'):
         super().__init__()
-        n_times_downsample = np.array([int(math.log2(d)) for d in downsample])
-        self.conv_blocks = nn.ModuleList()
-        max_ds = n_times_downsample.max()
 
-        self.conv_first = SamePadConv3d(image_channel, n_hiddens, kernel_size=3, padding_type=padding_type)
+        self.t_downsample = int(downsample[0]) # temporal downsample ratio, 2 by default 
+        self.h_downsample = int(downsample[1])
+        self.w_downsample = int(downsample[2]) # spatial downsample ratio, 14 by default (DinoV2)
+        """
+        DinoV2
+        input: BT C H W (image), C = 3, H = W = 224
+        output: BT L D, L = 256, D = 1024
+        """
+        self.dinov2_model = DinoV2ViTBackbone("dinov2-vit-l", "resize-naive", 224) 
+        """
+        attention layer to capture temporal correlations
+        """
+        self.dinov2_outdim = 1024
+        self.attn_layer = nn.TransformerEncoderLayer(d_model=self.dinov2_outdim, nhead=8, batch_first=True)
 
-        for i in range(max_ds):
-            block = nn.Module()
-            in_channels = n_hiddens * 2**i
-            out_channels = n_hiddens * 2**(i+1)
-            stride = tuple([2 if d > 0 else 1 for d in n_times_downsample])
-            block.down = SamePadConv3d(in_channels, out_channels, 4, stride=stride, padding_type=padding_type)
-            block.res = ResBlock(out_channels, out_channels, norm_type=norm_type)
-            self.conv_blocks.append(block)
-            n_times_downsample -= 1
+        self.final_out_dim = 256
+        self.proj = nn.Linear(self.dinov2_outdim * self.t_downsample, self.final_out_dim)
 
         self.final_block = nn.Sequential(
-            Normalize(out_channels, norm_type), 
+            Normalize(self.final_out_dim, norm_type), 
             SiLU()
         )
-
-        self.out_channels = out_channels
-
+        
     def forward(self, x):
-        h = self.conv_first(x)
-        for block in self.conv_blocks:
-            h = block.down(h)
-            h = block.res(h)
+        # input size B,C,T,H,W
+        # first reshape to BT,C,H,W
+        B, C, T, H, W = x.shape
+        assert T % self.t_downsample == 0
+        x = x.permute(0, 2, 1, 3, 4) # (B, T, C, H, W)
+        x = x.contiguous().view(B * T, C, H, W)
+
+        h = self.dinov2_model(x)[0] # (BT, L, D)
+
+        _, L, D = h.shape
+        assert L == (H // self.h_downsample) * (W // self.w_downsample)
+        h = h.contiguous().view(B, T, L, D).view(B, T * L, D)
+        h = self.attn_layer(h) # (B, TL, D)
+
+        h = h.view(B, T, L, D).permute(0, 2, 1, 3) # (B, L, T, D)
+        h = h.contiguous().view(B, L, T // self.t_downsample, self.t_downsample, D) # (B, L, T // p, p, D)
+        h = h.view(B, L, T // self.t_downsample, self.t_downsample * D)
+        h = self.proj(h) # (B, L, t, d)
+        h = h.permute(0, 3, 2, 1) # (B, d, t, L)
         h = self.final_block(h)
+
+        h = h.contiguous().view(B, self.final_out_dim, T // self.t_downsample, 
+                                H // self.h_downsample, W // self.w_downsample)
         return h
 
 
@@ -820,4 +842,3 @@ class VQGANVisionActionEval(nn.Module):
         frames_recon = torch.gather(x_recon, 2, frame_idx_selected).squeeze(2)
 
         return x_recon, x_recon_action, vq_output, vq_output_action
-    
