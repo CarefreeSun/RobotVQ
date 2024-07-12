@@ -350,10 +350,11 @@ class Encoder(nn.Module):
     """
     def __init__(self, n_hiddens, downsample, image_channel=3, norm_type='group', padding_type='replicate'):
         super().__init__()
+        self.transform_size = (224, 224) # first resize to adapt DinoV2
 
         self.t_downsample = int(downsample[0]) # temporal downsample ratio, 2 by default 
         self.h_downsample = int(downsample[1])
-        self.w_downsample = int(downsample[2]) # spatial downsample ratio, 14 by default (DinoV2)
+        self.w_downsample = int(downsample[2]) # spatial downsample ratio, 16 by default
         """
         DinoV2
         input: BT C H W (image), C = 3, H = W = 224
@@ -382,6 +383,7 @@ class Encoder(nn.Module):
         x = x.permute(0, 2, 1, 3, 4) # (B, T, C, H, W)
         x = x.contiguous().view(B * T, C, H, W)
 
+        x = F.interpolate(x, size=self.transform_size, mode='bilinear', align_corners=False)
         h = self.dinov2_model(x)[0] # (BT, L, D)
 
         _, L, D = h.shape
