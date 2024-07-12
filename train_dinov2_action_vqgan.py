@@ -30,7 +30,7 @@ def main():
     parser.add_argument('--n_codes', type=int, default=16384)
     parser.add_argument('--n_hiddens', type=int, default=32)
     parser.add_argument('--lr', type=float, default=5e-6)
-    parser.add_argument('--downsample', nargs='+', type=int, default=(2, 14, 14))
+    parser.add_argument('--downsample', nargs='+', type=int, default=(2, 16, 16))
     parser.add_argument('--disc_channels', type=int, default=64)
     parser.add_argument('--disc_layers', type=int, default=3)
     parser.add_argument('--discriminator_iter_start', type=int, default=5000)

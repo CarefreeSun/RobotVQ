@@ -367,7 +367,7 @@ class Encoder(nn.Module):
         self.dinov2_outdim = 1024
         self.attn_layer = nn.TransformerEncoderLayer(d_model=self.dinov2_outdim, nhead=8, batch_first=True)
 
-        self.final_out_dim = 256
+        self.final_out_dim = 1024
         self.proj = nn.Linear(self.dinov2_outdim * self.t_downsample, self.final_out_dim)
 
         self.final_block = nn.Sequential(
