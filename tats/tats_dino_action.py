@@ -723,7 +723,7 @@ class ActionDecoderStack(nn.Module):
         x_split = torch.split(x, self.output_dims, dim=-1)
         return torch.cat([decoder(x_.flatten(-2)) for decoder, x_ in zip(self.decoders, x_split)], dim=-1)
 
-class VQGANVisionActionEval(nn.Module):
+class VQGANDinoV2ActionEval(nn.Module):
     '''
     Add an action encoder to the Video VQGAN model
     the action space is encoded by a separate encoder, and decoded by a separate decoder
@@ -741,7 +741,7 @@ class VQGANVisionActionEval(nn.Module):
             args.padding_type = 'replicate'
         self.encoder = Encoder(args.n_hiddens, args.downsample, args.image_channels, args.norm_type, args.padding_type)
         self.decoder = Decoder(args.n_hiddens, args.downsample, args.image_channels, args.norm_type)
-        self.enc_out_ch = self.encoder.out_channels
+        self.enc_out_ch = self.encoder.final_out_dim
         self.pre_vq_conv = SamePadConv3d(self.enc_out_ch, args.embedding_dim, 1, padding_type=args.padding_type)
         self.post_vq_conv = SamePadConv3d(args.embedding_dim, self.enc_out_ch, 1)
 

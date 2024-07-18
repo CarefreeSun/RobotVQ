@@ -6,7 +6,7 @@ from .dataloader_VLA import get_image_action_dataloader
 from .tats_vqgan import VQGAN
 from .tats_vision import VQGANVision
 from .tats_vision_action import VQGANVisionAction, VQGANVisionActionEval
-from .tats_dino_action import VQGANDinoV2Action
+from .tats_dino_action import VQGANDinoV2Action, VQGANDinoV2ActionEval
 from .tats_transformer import Net2NetTransformer
 from .utils import count_parameters, AverageMeter
 

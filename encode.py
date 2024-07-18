@@ -11,7 +11,7 @@ import os
 import argparse
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import ModelCheckpoint
-from tats import VQGANVisionActionEval
+from tats import VQGANVisionActionEval, VQGANDinoV2ActionEval
 from tats.modules.callbacks import ImageLogger, VideoLogger
 from pytorch_lightning.strategies import DeepSpeedStrategy
 from torchvision import transforms
@@ -84,7 +84,7 @@ assert args.normalize and args.wo_transformer_residual
 
 args.dst_dir = '../robot_datasets/' + args.weight_path.split('/')[-3] + '_tokenized'
 
-model = VQGANVisionActionEval(args)
+model = VQGANDinoV2ActionEval(args)
 state_dict = torch.load(args.weight_path, map_location='cpu')['state_dict']
 result = model.load_state_dict(state_dict, strict=False)
 for k in result.missing_keys:
