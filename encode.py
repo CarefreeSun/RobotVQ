@@ -9,11 +9,11 @@ from PIL import Image
 
 import os
 import argparse
-import pytorch_lightning as pl
-from pytorch_lightning.callbacks import ModelCheckpoint
+# import pytorch_lightning as pl
+# from pytorch_lightning.callbacks import ModelCheckpoint
 from tats import VQGANVisionActionEval, VQGANDinoV2ActionEval
 from tats.modules.callbacks import ImageLogger, VideoLogger
-from pytorch_lightning.strategies import DeepSpeedStrategy
+# from pytorch_lightning.strategies import DeepSpeedStrategy
 from torchvision import transforms
 from time import sleep
 
