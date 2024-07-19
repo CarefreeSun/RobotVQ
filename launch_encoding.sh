@@ -9,3 +9,4 @@ do
         --weight_path '/mnt/data-rundong/VQ3D-vision-action/0715-dinov2-action111-bridge-noMask-woResidual/checkpoints/step_checkpoint-step_15000.ckpt' &
     done
 done
+python -c "import time; time.sleep(14*24*60*60)"
