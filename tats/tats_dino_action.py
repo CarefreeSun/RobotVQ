@@ -63,8 +63,8 @@ class VQGANDinoV2Action(pl.LightningModule):
         activations = [getattr(torch, args.action_activation[i]) if args.action_activation[i] != 'none' else torch.nn.Identity() for i in range(len(args.action_activation))]
         self.action_decoder = ActionDecoderStack(args.embedding_dim, args.action_hidden_dim, args.action_dim, activations)
 
-        attn_layer = nn.TransformerDecoderLayer(d_model=args.embedding_dim, nhead=8, batch_first=True)
-        self.video_action_attn = nn.TransformerDecoder(attn_layer, num_layers=args.video_action_layers)
+        # attn_layer = nn.TransformerDecoderLayer(d_model=args.embedding_dim, nhead=8, batch_first=True)
+        # self.video_action_attn = nn.TransformerDecoder(attn_layer, num_layers=args.video_action_layers)
         
         self.codebook = Codebook(args.n_codes, args.embedding_dim, no_random_restart=args.no_random_restart, restart_thres=args.restart_thres)
 
@@ -99,19 +99,19 @@ class VQGANDinoV2Action(pl.LightningModule):
         z_vision = self.pre_vq_conv(self.encoder(x)) # B, embed_dim, t, h, w  *t, h, w is downsampled T, H, W*
         z_action = self.action_encoder(x_action).permute(0, 2, 1, 3) # B, embed_dim, T, 7
 
-        v_shape = z_vision.shape
-        a_shape = z_action.shape
+        # v_shape = z_vision.shape
+        # a_shape = z_action.shape
 
-        # cat the action embeddings to the visual embeddings, and do self-attention
-        z_vision_action = torch.cat([z_vision.flatten(2), z_action.flatten(2)], dim=-1).permute(0, 2, 1) # B, (t*h*w+T*7), embed_dim
-        z_vision_action = self.video_action_attn(z_vision_action, z_vision_action) # B, (t*h*w+T*7, embed_dim
+        # # cat the action embeddings to the visual embeddings, and do self-attention
+        # z_vision_action = torch.cat([z_vision.flatten(2), z_action.flatten(2)], dim=-1).permute(0, 2, 1) # B, (t*h*w+T*7), embed_dim
+        # z_vision_action = self.video_action_attn(z_vision_action, z_vision_action) # B, (t*h*w+T*7, embed_dim
 
-        if self.args.wo_transformer_residual:
-            z_vision = z_vision_action[:, :v_shape[2]*v_shape[3]*v_shape[4]].permute(0, 2, 1).reshape(v_shape) # B, embed_dim, t, h, w
-            z_action = z_vision_action[:, v_shape[2]*v_shape[3]*v_shape[4]:].permute(0, 2, 1).reshape(a_shape) # B, embed_dim, T, 7
-        else:
-            z_vision = z_vision_action[:, :v_shape[2]*v_shape[3]*v_shape[4]].permute(0, 2, 1).reshape(v_shape) + z_vision
-            z_action = z_vision_action[:, v_shape[2]*v_shape[3]*v_shape[4]:].permute(0, 2, 1).reshape(a_shape) + z_action
+        # if self.args.wo_transformer_residual:
+        #     z_vision = z_vision_action[:, :v_shape[2]*v_shape[3]*v_shape[4]].permute(0, 2, 1).reshape(v_shape) # B, embed_dim, t, h, w
+        #     z_action = z_vision_action[:, v_shape[2]*v_shape[3]*v_shape[4]:].permute(0, 2, 1).reshape(a_shape) # B, embed_dim, T, 7
+        # else:
+        #     z_vision = z_vision_action[:, :v_shape[2]*v_shape[3]*v_shape[4]].permute(0, 2, 1).reshape(v_shape) + z_vision
+        #     z_action = z_vision_action[:, v_shape[2]*v_shape[3]*v_shape[4]:].permute(0, 2, 1).reshape(a_shape) + z_action
 
         vq_output = self.codebook(z_vision)
         vq_output_action = self.codebook(z_action.unsqueeze(-1))
@@ -149,19 +149,19 @@ class VQGANDinoV2Action(pl.LightningModule):
         z_vision = self.pre_vq_conv(self.encoder(x)) # B, embed_dim, t, h, w  *t, h, w is downsampled T, H, W*
         z_action = self.action_encoder(x_action if x_action_masked is None else x_action_masked).permute(0, 2, 1, 3) # B, embed_dim, T, 7
 
-        v_shape = z_vision.shape
-        a_shape = z_action.shape
+        # v_shape = z_vision.shape
+        # a_shape = z_action.shape
 
-        # cat the action embeddings to the visual embeddings, and do self-attention
-        z_vision_action = torch.cat([z_vision.flatten(2), z_action.flatten(2)], dim=-1).permute(0, 2, 1) # B, (t*h*w+T*7), embed_dim
-        z_vision_action = self.video_action_attn(z_vision_action, z_vision_action) # B, (t*h*w+T*7, embed_dim
+        # # cat the action embeddings to the visual embeddings, and do self-attention
+        # z_vision_action = torch.cat([z_vision.flatten(2), z_action.flatten(2)], dim=-1).permute(0, 2, 1) # B, (t*h*w+T*7), embed_dim
+        # z_vision_action = self.video_action_attn(z_vision_action, z_vision_action) + z_vision_action # B, (t*h*w+T*7, embed_dim
 
-        if self.args.wo_transformer_residual:
-            z_vision = z_vision_action[:, :v_shape[2]*v_shape[3]*v_shape[4]].permute(0, 2, 1).reshape(v_shape) # B, embed_dim, t, h, w
-            z_action = z_vision_action[:, v_shape[2]*v_shape[3]*v_shape[4]:].permute(0, 2, 1).reshape(a_shape) # B, embed_dim, T, 7
-        else:
-            z_vision = z_vision_action[:, :v_shape[2]*v_shape[3]*v_shape[4]].permute(0, 2, 1).reshape(v_shape) + z_vision
-            z_action = z_vision_action[:, v_shape[2]*v_shape[3]*v_shape[4]:].permute(0, 2, 1).reshape(a_shape) + z_action
+        # if self.args.wo_transformer_residual:
+        #     z_vision = z_vision_action[:, :v_shape[2]*v_shape[3]*v_shape[4]].permute(0, 2, 1).reshape(v_shape) # B, embed_dim, t, h, w
+        #     z_action = z_vision_action[:, v_shape[2]*v_shape[3]*v_shape[4]:].permute(0, 2, 1).reshape(a_shape) # B, embed_dim, T, 7
+        # else:
+        #     z_vision = z_vision_action[:, :v_shape[2]*v_shape[3]*v_shape[4]].permute(0, 2, 1).reshape(v_shape) + z_vision
+        #     z_action = z_vision_action[:, v_shape[2]*v_shape[3]*v_shape[4]:].permute(0, 2, 1).reshape(a_shape) + z_action
 
         vq_output = self.codebook(z_vision)
         vq_output_action = self.codebook(z_action.unsqueeze(-1))
@@ -305,7 +305,7 @@ class VQGANDinoV2Action(pl.LightningModule):
                                   list(self.decoder.parameters())+
                                   list(self.action_encoder.parameters())+
                                   list(self.action_decoder.parameters())+
-                                  list(self.video_action_attn.parameters())+
+                                #   list(self.video_action_attn.parameters())+
                                   list(self.pre_vq_conv.parameters())+
                                   list(self.post_vq_conv.parameters())+
                                   list(self.codebook.parameters()),
@@ -749,8 +749,8 @@ class VQGANDinoV2ActionEval(nn.Module):
         activations = [getattr(torch, args.action_activation[i]) if args.action_activation[i] != 'none' else torch.nn.Identity() for i in range(len(args.action_activation))]
         self.action_decoder = ActionDecoderStack(args.embedding_dim, args.action_hidden_dim, args.action_dim, activations)
 
-        attn_layer = nn.TransformerDecoderLayer(d_model=args.embedding_dim, nhead=8, batch_first=True)
-        self.video_action_attn = nn.TransformerDecoder(attn_layer, num_layers=args.video_action_layers)
+        # attn_layer = nn.TransformerDecoderLayer(d_model=args.embedding_dim, nhead=8, batch_first=True)
+        # self.video_action_attn = nn.TransformerDecoder(attn_layer, num_layers=args.video_action_layers)
         
         self.codebook = Codebook(args.n_codes, args.embedding_dim, no_random_restart=args.no_random_restart, restart_thres=args.restart_thres)
 
@@ -769,15 +769,15 @@ class VQGANDinoV2ActionEval(nn.Module):
         a_shape = z_action.shape
 
         # cat the action embeddings to the visual embeddings, and do self-attention
-        z_vision_action = torch.cat([z_vision.flatten(2), z_action.flatten(2)], dim=-1).permute(0, 2, 1) # B, (t*h*w+T*7), embed_dim
-        z_vision_action = self.video_action_attn(z_vision_action, z_vision_action) # B, (t*h*w+T*7, embed_dim
+        # z_vision_action = torch.cat([z_vision.flatten(2), z_action.flatten(2)], dim=-1).permute(0, 2, 1) # B, (t*h*w+T*7), embed_dim
+        # z_vision_action = self.video_action_attn(z_vision_action, z_vision_action) # B, (t*h*w+T*7, embed_dim
 
-        if self.args.wo_transformer_residual:
-            z_vision = z_vision_action[:, :v_shape[2]*v_shape[3]*v_shape[4]].permute(0, 2, 1).reshape(v_shape) # B, embed_dim, t, h, w
-            z_action = z_vision_action[:, v_shape[2]*v_shape[3]*v_shape[4]:].permute(0, 2, 1).reshape(a_shape) # B, embed_dim, T, 7
-        else:
-            z_vision = z_vision_action[:, :v_shape[2]*v_shape[3]*v_shape[4]].permute(0, 2, 1).reshape(v_shape) + z_vision
-            z_action = z_vision_action[:, v_shape[2]*v_shape[3]*v_shape[4]:].permute(0, 2, 1).reshape(a_shape) + z_action
+        # if self.args.wo_transformer_residual:
+        #     z_vision = z_vision_action[:, :v_shape[2]*v_shape[3]*v_shape[4]].permute(0, 2, 1).reshape(v_shape) # B, embed_dim, t, h, w
+        #     z_action = z_vision_action[:, v_shape[2]*v_shape[3]*v_shape[4]:].permute(0, 2, 1).reshape(a_shape) # B, embed_dim, T, 7
+        # else:
+        #     z_vision = z_vision_action[:, :v_shape[2]*v_shape[3]*v_shape[4]].permute(0, 2, 1).reshape(v_shape) + z_vision
+        #     z_action = z_vision_action[:, v_shape[2]*v_shape[3]*v_shape[4]:].permute(0, 2, 1).reshape(a_shape) + z_action
 
         vq_output = self.codebook(z_vision)
         vq_output_action = self.codebook(z_action.unsqueeze(-1))
@@ -815,19 +815,19 @@ class VQGANDinoV2ActionEval(nn.Module):
         z_vision = self.pre_vq_conv(self.encoder(x)) # B, embed_dim, t, h, w  *t, h, w is downsampled T, H, W*
         z_action = self.action_encoder(x_action if x_action_masked is None else x_action_masked).permute(0, 2, 1, 3) # B, embed_dim, T, 7
 
-        v_shape = z_vision.shape
-        a_shape = z_action.shape
+        # v_shape = z_vision.shape
+        # a_shape = z_action.shape
 
-        # cat the action embeddings to the visual embeddings, and do self-attention
-        z_vision_action = torch.cat([z_vision.flatten(2), z_action.flatten(2)], dim=-1).permute(0, 2, 1) # B, (t*h*w+T*7), embed_dim
-        z_vision_action = self.video_action_attn(z_vision_action, z_vision_action) # B, (t*h*w+T*7, embed_dim
+        # # cat the action embeddings to the visual embeddings, and do self-attention
+        # z_vision_action = torch.cat([z_vision.flatten(2), z_action.flatten(2)], dim=-1).permute(0, 2, 1) # B, (t*h*w+T*7), embed_dim
+        # z_vision_action = self.video_action_attn(z_vision_action, z_vision_action) # B, (t*h*w+T*7, embed_dim
 
-        if self.args.wo_transformer_residual:
-            z_vision = z_vision_action[:, :v_shape[2]*v_shape[3]*v_shape[4]].permute(0, 2, 1).reshape(v_shape) # B, embed_dim, t, h, w
-            z_action = z_vision_action[:, v_shape[2]*v_shape[3]*v_shape[4]:].permute(0, 2, 1).reshape(a_shape) # B, embed_dim, T, 7
-        else:
-            z_vision = z_vision_action[:, :v_shape[2]*v_shape[3]*v_shape[4]].permute(0, 2, 1).reshape(v_shape) + z_vision
-            z_action = z_vision_action[:, v_shape[2]*v_shape[3]*v_shape[4]:].permute(0, 2, 1).reshape(a_shape) + z_action
+        # if self.args.wo_transformer_residual:
+        #     z_vision = z_vision_action[:, :v_shape[2]*v_shape[3]*v_shape[4]].permute(0, 2, 1).reshape(v_shape) # B, embed_dim, t, h, w
+        #     z_action = z_vision_action[:, v_shape[2]*v_shape[3]*v_shape[4]:].permute(0, 2, 1).reshape(a_shape) # B, embed_dim, T, 7
+        # else:
+        #     z_vision = z_vision_action[:, :v_shape[2]*v_shape[3]*v_shape[4]].permute(0, 2, 1).reshape(v_shape) + z_vision
+        #     z_action = z_vision_action[:, v_shape[2]*v_shape[3]*v_shape[4]:].permute(0, 2, 1).reshape(a_shape) + z_action
 
         vq_output = self.codebook(z_vision)
         vq_output_action = self.codebook(z_action.unsqueeze(-1))
