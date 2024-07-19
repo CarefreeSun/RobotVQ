@@ -55,7 +55,7 @@ parser.add_argument("--num_workers", type=int, default=8)
 parser.add_argument("--resolution", type=int, default=256)
 parser.add_argument('--image_channels', type=int, default=3)
 
-parser.add_argument('--src', type=str, default='../robot_datasets/tokenizer-training')
+parser.add_argument('--src', type=str, default='/mnt/data-rundong/robot_datasets/tokenizer-training')
 parser.add_argument("--dataset_names", nargs='+', type=str, 
                     default=("bridge2", 
                             "rt1"
