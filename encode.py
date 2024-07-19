@@ -62,7 +62,7 @@ parser.add_argument("--dataset_names", nargs='+', type=str,
                             ))
 parser.add_argument("--image_root", nargs='+', type=str, 
                     default=("/mnt/robotdata/bridge2/images_bridge",
-                            "/mnt/robotdata/RT1-images"
+                            "/mnt/robotdata/RT1/RT1-images"
                             ))
 parser.add_argument("--normalize", action="store_true", help="normalize the actions")
 parser.add_argument('--dst_dir', type=str, default='')
