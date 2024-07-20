@@ -94,6 +94,16 @@ class VQGANDinoV2Action(pl.LightningModule):
                        self.args.resolution)
         return tuple([s // d for s, d in zip(input_shape,
                                              self.args.downsample)])
+    
+    def pixel_weight(self, x: torch.Tensor, thresh=0.1, high_weight=1., low_weight=0.1):
+        # x.shape = [B, C, T, H, W], value is in [-0.5, 0.5]
+        # calculate difference between adjacent frames to determine pixel-level reconstruction loss weight
+        B, C, T, H, W = x.shape
+        with torch.no_grad():
+            weight_map = torch.ones([B, T, H, W], device=x.device) # keep first frame average, change weights of other frames
+            frame_diff = (x[:, :, 1:, :, :] - x[:, :, :-1, :, :]).sum(dim=1)
+            weight_map[:, 1:, :, :] = torch.where(frame_diff > thresh,  high_weight, low_weight)
+        return weight_map
 
     def encode(self, x, x_action, include_embeddings=False):
         z_vision = self.pre_vq_conv(self.encoder(x)) # B, embed_dim, t, h, w  *t, h, w is downsampled T, H, W*
@@ -142,10 +152,10 @@ class VQGANDinoV2Action(pl.LightningModule):
         h = h.permute(0, 1, 3, 2)
         return self.action_decoder(h)
 
-    def forward(self, x, x_action, x_action_masked=None, opt_stage=None, log_image=False):
+    def forward(self, x, x_action, x_action_masked=None, opt_stage=None, log_image=False, if_pixel_weight=False):
         B, C, T, H, W = x.shape 
         # x_action is in shape B, T, action_dim
-        
+
         z_vision = self.pre_vq_conv(self.encoder(x)) # B, embed_dim, t, h, w  *t, h, w is downsampled T, H, W*
         z_action = self.action_encoder(x_action if x_action_masked is None else x_action_masked).permute(0, 2, 1, 3) # B, embed_dim, T, 7
 
@@ -173,6 +183,11 @@ class VQGANDinoV2Action(pl.LightningModule):
         x_recon_action = self.action_decoder(vq_embeddings_action.squeeze(-1).permute(0, 2, 1, 3)) # B, T, embed_dim, 7
 
         recon_loss = F.l1_loss(x_recon, x) * self.l1_weight
+        if if_pixel_weight:
+            weight_vision = self.pixel_weight(x) # B, T, H, W
+            weight_vision = weight_vision.unsqueeze(1).repeat(1, C, 1, 1, 1) # B, C, T, H, W
+            recon_loss = recon_loss * weight_vision
+
         recon_loss_action = F.l1_loss(x_recon_action, x_action) * self.l1_action_weight
 
         frame_idx = torch.randint(0, T, [B]).to(x.device)
