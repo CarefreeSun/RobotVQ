@@ -4,8 +4,8 @@ import json
 import copy
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--src', type=str, default='/mnt/data-rundong/robot_datasets/0715-dinov2-action111-bridge-noMask-woResidual_tokenized/')
-parser.add_argument('--dst', type=str, default='/mnt/data-rundong/robot_datasets/0715-dinov2-action111-bridge-noMask-woResidual_tokenized_stacked/')
+parser.add_argument('--src', type=str, default='/mnt/data-rundong/robot_datasets/0715-dinov2-action111-bridge-noMask-woResidual_tokenized/bridge2')
+parser.add_argument('--dst', type=str, default='/mnt/data-rundong/robot_datasets/0715-dinov2-action111-bridge-noMask-woResidual_tokenized_stacked/bridge2')
 parser.add_argument('--split', type=str, default='train')
 parser.add_argument('--start_shard', type=int, default=0)
 parser.add_argument('--num_shards', type=int, default=240)
