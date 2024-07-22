@@ -1,6 +1,6 @@
 for shard_cnt in $(seq 0 1) 
 do
-    start_shard=$((0 + $shard_cnt*8))  # Removed unnecessary variable and ensured correct arithmetic
+    start_shard=$(($1 + $shard_cnt*8))  # Removed unnecessary variable and ensured correct arithmetic
     for i in $(seq 0 7)
     do
         python encode.py --gpu_id $i --split 'train' --normalize --wo_transformer_residual \
