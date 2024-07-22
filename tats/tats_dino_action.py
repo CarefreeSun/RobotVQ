@@ -190,7 +190,7 @@ class VQGANDinoV2Action(pl.LightningModule):
         x_recon_action = self.action_decoder(vq_embeddings_action.squeeze(-1).permute(0, 2, 1, 3)) # B, T, embed_dim, 7
 
         if self.use_pixel_weight:
-            recon_loss = (x_recon - x).abs().mean(dim=1)
+            recon_loss = (x_recon - x).abs().mean(dim=1) # B, T, H, W
             weight_vision = self.pixel_weight(x) # B, T, H, W
             recon_loss = (recon_loss * weight_vision).mean() * self.l1_weight
         else:
