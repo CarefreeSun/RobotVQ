@@ -6,7 +6,7 @@ import copy
 parser = argparse.ArgumentParser()
 parser.add_argument('--src', type=str, default='/mnt/data-rundong/robot_datasets/0715-dinov2-action111-bridge-noMask-woResidual_step25000_tokenized/rt1')
 parser.add_argument('--dst', type=str, default='/mnt/data-rundong/robot_datasets/0715-dinov2-action111-bridge-noMask-woResidual_step25000_tokenized_stacked/rt1')
-parser.add_argument('--split', type=str, default='train')
+parser.add_argument('--split', type=str, default='test')
 parser.add_argument('--start_shard', type=int, default=0)
 parser.add_argument('--num_shards', type=int, default=240)
 
