@@ -88,7 +88,7 @@ class VQGANDinoV2Action(pl.LightningModule):
         self.l1_action_weight = args.l1_action_weight
         self.use_pixel_weight = args.use_pixel_weight
         self.frame_diff_thresh = args.frame_diff_thresh
-        self.high_weight = args.high_wight
+        self.high_weight = args.high_weight
         self.low_weight = args.low_weight
         self.save_hyperparameters()
 
