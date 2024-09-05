@@ -138,7 +138,7 @@ with torch.no_grad():
                         # else, encode frame 6i-6 to 6i-1 and action 6i-6 to 6i-1
                         if start+stack_cnt == 0: # video will be self.length duplicates of frame 0, and each action entry will be [0] * 7
                             # img_filename = instance_format.format(instance_data['image_indices'][0])
-                            if dataset_name == 'pizza_dataset':
+                            if dataset_name == 'pizza':
                                 img_filename = instance_format.format(instance_data['image_indices'][0])
                             else:
                                 img_filename = instance_format.format(instance_data['image_indices'][0])
