@@ -57,10 +57,10 @@ parser.add_argument('--image_channels', type=int, default=3)
 
 parser.add_argument('--src', type=str, default='/mnt/data-rundong/robot_datasets/tokenizer-training')
 parser.add_argument("--dataset_names", nargs='+', type=str, 
-                    default=("pizza"
+                    default=("pizza", 
                             ))
 parser.add_argument("--image_root", nargs='+', type=str, 
-                    default=("/mnt/robotdata/datasets/pizza_robot"
+                    default=("/mnt/robotdata/datasets/pizza_robot", 
                             ))
 parser.add_argument("--normalize", action="store_true", help="normalize the actions")
 parser.add_argument('--dst_dir', type=str, default='')
