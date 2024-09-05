@@ -199,7 +199,7 @@ class VQGANDinoV2Action(pl.LightningModule):
         recon_loss_action = F.l1_loss(x_recon_action, x_action) * self.l1_action_weight
 
         frame_idx = torch.randint(0, T, [B]).to(x.device)
-        frame_idx_selected = frame_idx.reshape(-1, 1, 1, 1, 1).repeat(1, C, 1, H, W)
+        frame_idx_selected = frame_idx.reshape(-1, 1, 1, 1, 1).repeat(1, C, 1, H, W) # select one frame for image discriminator
         frames = torch.gather(x, 2, frame_idx_selected).squeeze(2)
         frames_recon = torch.gather(x_recon, 2, frame_idx_selected).squeeze(2)
 
@@ -247,8 +247,8 @@ class VQGANDinoV2Action(pl.LightningModule):
                                 'train/recon_loss_action': recon_loss_action,
                                 'train/aeloss': aeloss,
                                 'train/commitment_loss': vq_output['commitment_loss'],
-                                'train/commitment_loss_action': vq_output_action['commitment_loss'],
-                                'train/perplexity': vq_output['perplexity'], 
+                                'train/commitment_loss_action': vq_output_action['commitment_loss'], # 原特征与VQ特征之间的距离约束
+                                'train/perplexity': vq_output['perplexity'], # 仅作为指标，不做优化
                                 'train/perplexity_action': vq_output_action['perplexity']},
                                 prog_bar=True, logger=True, on_step=True, on_epoch=True, sync_dist=True,
                                 batch_size=self.args.batch_size)
