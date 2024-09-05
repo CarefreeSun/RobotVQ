@@ -80,7 +80,7 @@ assert args.sequence_length == 6
 
 assert args.normalize and args.wo_transformer_residual
 
-args.dst_dir = '/mnt/data-rundong/robot_datasets/' + 'pizza_' + args.weight_path.split('/')[-3] + '_step95000' + '_tokenized'
+args.dst_dir = '/mnt/data-rundong/robot_datasets/' + 'fullpizza_' + args.weight_path.split('/')[-3] + '_step95000' + '_tokenized'
 
 model = VQGANDinoV2ActionEval(args)
 state_dict = torch.load(args.weight_path, map_location='cpu')['state_dict']
@@ -107,7 +107,7 @@ with torch.no_grad():
         mean, std = json.load(open(mean_std_path, 'r'))['mean'], json.load(open(mean_std_path, 'r'))['std']
         mean[-1] = 0.
         std[-1] = 1.
-        src_filepath = os.path.join(args.src, dataset_name, 'pizza_dataset_10_standard_format.jsonl')
+        src_filepath = os.path.join(args.src, dataset_name, 'pizza_dataset_standard_format.jsonl')
         with open(src_filepath, 'r') as f:
             lines = f.readlines()
             num_data = len(lines)
