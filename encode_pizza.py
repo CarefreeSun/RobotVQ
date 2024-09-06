@@ -80,7 +80,7 @@ assert args.sequence_length == 6
 
 assert args.normalize and args.wo_transformer_residual
 
-args.dst_dir = '/mnt/data-rundong/robot_datasets/' + 'fullpizza_' + args.weight_path.split('/')[-3] + '_step95000' + '_tokenized'
+args.dst_dir = '/mnt/data-rundong/robot_datasets/' + '0906-fullpizza_' + args.weight_path.split('/')[-3] + '_step95000' + '_tokenized'
 
 model = VQGANDinoV2ActionEval(args)
 state_dict = torch.load(args.weight_path, map_location='cpu')['state_dict']
