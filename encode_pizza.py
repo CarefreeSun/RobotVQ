@@ -136,6 +136,8 @@ with torch.no_grad():
                         video, action = [], []
                         # if start is 0, encode 6 duplicate first frame and 6 null action
                         # else, encode frame 6i-6 to 6i-1 and action 6i-6 to 6i-1
+                        # note that frame id refers to the id in frame index list, not the actual frame id when collecting since some frame is lost
+
                         if start+stack_cnt == 0: # video will be self.length duplicates of frame 0, and each action entry will be [0] * 7
                             # img_filename = instance_format.format(instance_data['image_indices'][0])
                             if dataset_name == 'pizza':
@@ -168,15 +170,32 @@ with torch.no_grad():
 
                     # add a line with the following entries: task_description (trajectory_language), scene_description (instance_data['descriptions'][0])
                     # video_tokens, action_tokens, is_start_frame (0 or 1)
+                    # try:
+                    #     for stack_cnt in range(n_stacked):
+                    #         ret = {
+                    #             'trajectory_id': instance_data['trajectory_id'],
+                    #             'view': instance_data['view'],
+                    #             'start_frame': 6*(start+stack_cnt) - 6 if (start+stack_cnt) > 0 else -1,
+                    #             'task_description': instance_data['task_description'],
+                    #             'scene_description': instance_data['scene_description'],
+                    #             'clip_description': instance_data['descriptions'][str(6*(start+stack_cnt)-1)] if (start+stack_cnt) != 0 else "",
+                    #             'video_tokens': video_tokens[stack_cnt].tolist(),
+                    #             'action_tokens': action_tokens[stack_cnt].tolist(),
+                    #         }
+                    #         dst_file.write(json.dumps(ret) + '\n')
+                    #         dst_file.flush()
+                    # except:
+                    #     error_log.write(line)
+                    #     error_log.flush()
                     try:
                         for stack_cnt in range(n_stacked):
                             ret = {
                                 'trajectory_id': instance_data['trajectory_id'],
                                 'view': instance_data['view'],
-                                'start_frame': 6*(start+stack_cnt) - 6 if (start+stack_cnt) > 0 else -1,
+                                'start_frame': instance_data['image_indices'][6*(start+stack_cnt) - 6] if (start+stack_cnt) > 0 else -1,
                                 'task_description': instance_data['task_description'],
                                 'scene_description': instance_data['scene_description'],
-                                'clip_description': instance_data['descriptions'][str(6*(start+stack_cnt)-1)] if (start+stack_cnt) != 0 else "",
+                                'clip_description': instance_data['descriptions'][str(instance_data['image_indices'][6*(start+stack_cnt)-1])] if (start+stack_cnt) != 0 else "",
                                 'video_tokens': video_tokens[stack_cnt].tolist(),
                                 'action_tokens': action_tokens[stack_cnt].tolist(),
                             }
