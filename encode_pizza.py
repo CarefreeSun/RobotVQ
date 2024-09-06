@@ -188,6 +188,12 @@ with torch.no_grad():
                     #     error_log.write(line)
                     #     error_log.flush()
                     try:
+                        # search for proper clip description
+                        disc_id = None
+                        for i in range(6*(start+stack_cnt) - 6, 6*(start+stack_cnt)):
+                            if str(instance_data['image_indices'][i]) in instance_data['descriptions']:
+                                disc_id = str(instance_data['image_indices'][i])
+                                
                         for stack_cnt in range(n_stacked):
                             ret = {
                                 'trajectory_id': instance_data['trajectory_id'],
@@ -195,7 +201,7 @@ with torch.no_grad():
                                 'start_frame': instance_data['image_indices'][6*(start+stack_cnt) - 6] if (start+stack_cnt) > 0 else -1,
                                 'task_description': instance_data['task_description'],
                                 'scene_description': instance_data['scene_description'],
-                                'clip_description': instance_data['descriptions'][str(instance_data['image_indices'][6*(start+stack_cnt)-1])] if (start+stack_cnt) != 0 else "",
+                                'clip_description': instance_data['descriptions'][disc_id] if (start+stack_cnt) != 0 else "",
                                 'video_tokens': video_tokens[stack_cnt].tolist(),
                                 'action_tokens': action_tokens[stack_cnt].tolist(),
                             }
