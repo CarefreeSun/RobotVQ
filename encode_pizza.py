@@ -107,7 +107,7 @@ with torch.no_grad():
         mean, std = json.load(open(mean_std_path, 'r'))['mean'], json.load(open(mean_std_path, 'r'))['std']
         mean[-1] = 0.
         std[-1] = 1.
-        src_filepath = os.path.join(args.src, dataset_name, 'pizza_dataset_standard_format.jsonl')
+        src_filepath = os.path.join(args.src, dataset_name, 'pizza_dataset_supply_standard_format.jsonl')
         with open(src_filepath, 'r') as f:
             lines = f.readlines()
             num_data = len(lines)
@@ -193,7 +193,7 @@ with torch.no_grad():
                         for i in range(6*(start+stack_cnt) - 6, 6*(start+stack_cnt)):
                             if str(instance_data['image_indices'][i]) in instance_data['descriptions']:
                                 disc_id = str(instance_data['image_indices'][i])
-                                
+
                         for stack_cnt in range(n_stacked):
                             ret = {
                                 'trajectory_id': instance_data['trajectory_id'],
