@@ -82,22 +82,28 @@ class ImageActionDataset(Dataset):
 
         mean, std = torch.tensor(data['mean']), torch.tensor(data['std'])
 
-        if start == -1: # video will be self.length duplicates of frame 0, and each action entry will be [0] * 7
-            img_filename = data['image_paths'].format(data['image_indices'][0])
-            img = Image.open(img_filename)
-            img = self.transform(img)
-            video = [img] * self.length
-            if self.action:
-                initial_greeper_state = data['actions'][0][-1]
-                actions = [[0. for _ in range(6)] + [initial_greeper_state] for _ in range(self.length)]
-        else:
-            for i in range(start, start + self.length):
-                img_filename = data['image_paths'].format(data['image_indices'][i])
-                img = Image.open(img_filename)
-                img = self.transform(img)
-                video.append(img)
-                if self.action:
-                    actions.append(data['actions'][i-1] if i > 0 else [0. for _ in range(6)] + [data['actions'][0][-1]])
+        while True:
+            try:
+                if start == -1: # video will be self.length duplicates of frame 0, and each action entry will be [0] * 7
+                    img_filename = data['image_paths'].format(data['image_indices'][0])
+                    img = Image.open(img_filename)
+                    img = self.transform(img)
+                    video = [img] * self.length
+                    if self.action:
+                        initial_greeper_state = data['actions'][0][-1]
+                        actions = [[0. for _ in range(6)] + [initial_greeper_state] for _ in range(self.length)]
+                else:
+                    for i in range(start, start + self.length):
+                        img_filename = data['image_paths'].format(data['image_indices'][i])
+                        img = Image.open(img_filename)
+                        img = self.transform(img)
+                        video.append(img)
+                        if self.action:
+                            actions.append(data['actions'][i-1] if i > 0 else [0. for _ in range(6)] + [data['actions'][0][-1]])
+                break
+            except:
+                print('Missing image: ' + data['image_paths'].format(data['image_indices'][0]))
+                start = torch.randint(-1, data['frame_number'] - self.length + 1, (1,)).item() # resample
         
         if self.action and self.mask_action:
             mask_indices = torch.randperm(self.length)[:int(self.length * self.mask_action_ratio)]
