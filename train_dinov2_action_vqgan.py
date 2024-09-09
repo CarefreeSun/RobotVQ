@@ -74,7 +74,7 @@ def main():
     parser.add_argument('--image_channels', type=int, default=3)
     parser.add_argument('--val_check_interval', type=int, default=500)
     parser.add_argument('--log_interval', type=int, default=20)
-    parser.add_argument('--save_step_frequency', type=int, default=5000)
+    parser.add_argument('--save_step_frequency', type=int, default=2000)
 
     args = parser.parse_args()
 
