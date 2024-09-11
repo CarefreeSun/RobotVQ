@@ -346,7 +346,7 @@ class VQGANDinoV2Action(pl.LightningModule):
         #                             lr=self.args.lr, betas=(0.5, 0.9))
         # scheduler_disc = torch.optim.lr_scheduler.CosineAnnealingLR(opt_disc, T_max=self.args.max_steps // 2, eta_min=0)
 
-        return opt_ae, scheduler_ae
+        return [opt_ae], [scheduler_ae]
 
     def log_images(self, batch, **kwargs):
         log = dict()
