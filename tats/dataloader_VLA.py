@@ -116,9 +116,13 @@ class ImageActionDataset(Dataset):
             if self.action:
                 actions = torch.tensor(actions)
                 actions = (actions - mean) / std
+                # -----------------------------------
+                # actions = torch.clamp(actions, min=-1.0, max=1.0)
+                # -----------------------------------
                 if self.mask_action:
                     actions_masked = torch.tensor(actions_masked)
                     actions_masked = (actions_masked - mean) / std
+
 
         ret = {}
         ret['video'] = torch.stack(video).permute(1, 0, 2, 3) # (C, T, H, W)

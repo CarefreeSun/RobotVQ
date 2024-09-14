@@ -189,7 +189,7 @@ class VQGANDinoV2Action(pl.LightningModule):
         vq_embeddings = vq_output['embeddings'] # B, embed_dim, t, h, w
         vq_embeddings_action = vq_output_action['embeddings'] # B, embed_dim, T, 7, 1
         
-        x_recon = self.decoder(self.post_vq_conv(vq_embeddings.clone().detach()))
+        x_recon = self.decoder(self.post_vq_conv(vq_embeddings))
         x_recon_action = self.action_decoder(vq_embeddings_action.squeeze(-1).permute(0, 2, 1, 3)) # B, T, embed_dim, 7
 
         # if self.use_pixel_weight:
