@@ -79,7 +79,7 @@ class ImageActionDatasetGripperWidth(Dataset):
     def __getitem__(self, index):
 
         def reset_gripper_width(x):
-            return 1.0 if x > 0.02 else 0.0
+            return 0.0 if x > 0.02 else 1.0
     
         data = self.filenames[index]
         start = torch.randint(-1, data['frame_number'] - self.length + 1, (1,)).item()
