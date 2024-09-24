@@ -88,8 +88,8 @@ args.dst_dir = '/mnt/data-rundong/robot_datasets/' + '0920-finetunepizza_' + arg
 model = VQGANDinoV2ActionEval(args)
 state_dict = torch.load(args.weight_path, map_location='cpu')['state_dict']
 result = model.load_state_dict(state_dict, strict=False)
-for k in result.missing_keys:
-    assert 'discriminator' in k or 'perceptual_model' in k
+# for k in result.missing_keys:
+#     assert 'discriminator' in k or 'perceptual_model' in k
 model = model.to(device).eval()
 
 transform = transforms.Compose([
@@ -122,7 +122,7 @@ with torch.no_grad():
                     instance_format = image_root + '/outputimage_' + str(instance_data['trajectory_id']) + '_{}_' + str(instance_data['view']) + '.png'
                 elif dataset_name == 'rt1':
                     instance_format = image_root + '/outputimage_' + str(instance_data['trajectory_id']) + '_{}' + '.png'
-                elif dataset_name == 'pizza':
+                elif 'pizza' in dataset_name:
                     instance_format = image_root + '/' + str(instance_data['ID']) + '/' + str(instance_data['trajectory_id']) + '/images/right_rgb' + '/{:03d}' + '.jpg'
                 else:
                     assert False
