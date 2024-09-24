@@ -57,7 +57,7 @@ parser.add_argument('--image_channels', type=int, default=3)
 
 parser.add_argument('--src', type=str, default='/mnt/data-rundong/robot_datasets/tokenizer-training')
 parser.add_argument("--dataset_names", nargs='+', type=str, 
-                    default=("pizza", 
+                    default=("pizza_width", 
                             ))
 parser.add_argument("--image_root", nargs='+', type=str, 
                     default=("/mnt/robotdata/datasets/pizza_robot", 
@@ -72,6 +72,9 @@ parser.add_argument('--start_shard', type=int, default=0)
 parser.add_argument('--n_stacked_clips', type=int, default=10)
 
 parser.add_argument('--weight_path', type=str, default='/mnt/data-rundong/VQ3D-vision-action/0531-action111-bridge-noMask-woResidual/checkpoints/step_checkpoint-step_30000.ckpt')
+
+def reset_gripper_width(x):
+    return 0.0 if x > 0.02 else 1.0
 
 args = parser.parse_args()
 device = f'cuda:{args.gpu_id}'
@@ -107,7 +110,7 @@ with torch.no_grad():
         mean, std = json.load(open(mean_std_path, 'r'))['mean'], json.load(open(mean_std_path, 'r'))['std']
         mean[-1] = 0.
         std[-1] = 1.
-        src_filepath = os.path.join(args.src, dataset_name, 'pizza_dataset_supply_standard_format.jsonl')
+        src_filepath = os.path.join(args.src, dataset_name, 'pizza_dataset_width.jsonl')
         with open(src_filepath, 'r') as f:
             lines = f.readlines()
             num_data = len(lines)
@@ -147,14 +150,18 @@ with torch.no_grad():
                             img = Image.open(img_filename)
                             img = transform(img)
                             video = [img] * args.sequence_length
-                            action = [[0. for _ in range(6)] + [instance_data['actions'][0][-1]] for _ in range(args.sequence_length)]
+                            action = [[0. for _ in range(6)] + [reset_gripper_width(instance_data['action_gripper'][0][-1])] for _ in range(args.sequence_length)]
                         else:
                             for i in range(6*(start+stack_cnt) - 6, 6*(start+stack_cnt)):
                                 img_filename = instance_format.format(instance_data['image_indices'][i])
                                 img = Image.open(img_filename)
                                 img = transform(img)
                                 video.append(img)
-                                action.append(instance_data['actions'][i-1] if i > 0 else [0. for _ in range(6)] + [instance_data['actions'][0][-1]])
+                                # action.append(instance_data['actions'][i-1] if i > 0 else [0. for _ in range(6)] + [instance_data['actions'][0][-1]])
+                                if i > 0:
+                                    actions.append(instance_data['actions'][i-1][:-1] + [reset_gripper_width(instance_data['action_gripper'][i-1][-1])])
+                                else:
+                                    actions.append([0. for _ in range(6)] + [reset_gripper_width(instance_data['action_gripper'][0][-1])])
                         videos.append(torch.stack(video).permute(1,0,2,3)) # [C, T, H, W])
                         actions.append(torch.tensor(action)) # [T, 7]
 
