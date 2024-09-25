@@ -7,8 +7,8 @@ from .tats_vqgan import VQGAN
 from .tats_vision import VQGANVision
 from .tats_vision_action import VQGANVisionAction, VQGANVisionActionEval
 from .tats_dino_action import VQGANDinoV2Action, VQGANDinoV2ActionEval
-from .tats_finetune import VQGANDinoV2Action as VQFinetune
-from .tats_finetune import VQGANDinoV2ActionEval as VQFinetuneEval
+from .tats_moreactdeclayer import VQGANDinoV2Action as VQFinetune
+from .tats_moreactdeclayer import VQGANDinoV2ActionEval as VQFinetuneEval
 from .tats_transformer import Net2NetTransformer
 from .utils import count_parameters, AverageMeter
 
