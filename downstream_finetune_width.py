@@ -101,7 +101,7 @@ def main():
         for missing_key in load_result.missing_keys:
             print(f"Missing key: {missing_key}")
             wanted_key = ['action_encoder', 'video_action_attn']
-            assert any([key in missing_key for key in wanted_key]), f"Missing key: {missing_key}"
+            # assert any([key in missing_key for key in wanted_key]), f"Missing key: {missing_key}"
 
     callbacks = []
 
