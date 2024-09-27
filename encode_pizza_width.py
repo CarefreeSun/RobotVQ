@@ -11,7 +11,7 @@ import os
 import argparse
 # import pytorch_lightning as pl
 # from pytorch_lightning.callbacks import ModelCheckpoint
-from tats import VQGANVisionActionEval, VQGANDinoV2ActionEval
+from tats import VQGANVisionActionEval, VQFinetuneEval
 from tats.modules.callbacks import ImageLogger, VideoLogger
 # from pytorch_lightning.strategies import DeepSpeedStrategy
 from torchvision import transforms
@@ -83,9 +83,9 @@ assert args.sequence_length == 6
 
 assert args.normalize and args.wo_transformer_residual
 
-args.dst_dir = '/mnt/data-rundong/robot_datasets/' + '0920-finetunepizza_' + args.weight_path.split('/')[-3] + '_step56000' + '_tokenized'
+args.dst_dir = '/mnt/data-rundong/robot_datasets/' + args.weight_path.split('/')[-3] + '_step16000' + '_tokenized'
 
-model = VQGANDinoV2ActionEval(args)
+model = VQFinetuneEval(args)
 state_dict = torch.load(args.weight_path, map_location='cpu')['state_dict']
 result = model.load_state_dict(state_dict, strict=False)
 # for k in result.missing_keys:
