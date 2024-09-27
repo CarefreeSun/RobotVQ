@@ -108,7 +108,7 @@ class ImageActionDatasetGripperWidth(Dataset):
                         img = self.transform(img)
                         video.append(img)
                         if self.action:
-                            actions.append(data['action_gripper'][i][:-1] + [reset_gripper_width(data['action_gripper'][i][-1])])
+                            actions.append(data['action_gripper'][i-1][:-1] + [reset_gripper_width(data['action_gripper'][i-1][-1])])
                             # if i > 0:
                             #     actions.append(data['actions'][i-1][:-1] + [reset_gripper_width(data['action_gripper'][i-1][-1])])
                             # else:
