@@ -108,11 +108,11 @@ class ImageActionDatasetGripperWidth(Dataset):
                         img = self.transform(img)
                         video.append(img)
                         if self.action:
-                            # actions.append(data['action_gripper'][i-1][:-1] + [reset_gripper_width(data['action_gripper'][i-1][-1])])
-                            if i > 0:
-                                actions.append(data['action_gripper'][i][:-1] + [reset_gripper_width(data['action_gripper'][i][-1])])
-                            else:
-                                actions.append([0. for _ in range(6)] + [reset_gripper_width(data['action_gripper'][0][-1])])
+                            actions.append(data['action_gripper'][i][:-1] + [reset_gripper_width(data['action_gripper'][i][-1])])
+                            # if i > 0:
+                            #     actions.append(data['action_gripper'][i][:-1] + [reset_gripper_width(data['action_gripper'][i][-1])])
+                            # else:
+                            #     actions.append([0. for _ in range(6)] + [reset_gripper_width(data['action_gripper'][0][-1])])
                 break
             except:
                 print('Missing image: ' + data['image_paths'].format(data['image_indices'][0]))
