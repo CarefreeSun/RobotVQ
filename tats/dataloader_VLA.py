@@ -12,6 +12,7 @@ class ImageActionDatasetGripperWidth(Dataset):
     '''
     - Modified Version by Shaofan on 9.6, add pizza dataset
     - Modified by Shaofan on 9.20, dealing with gripper width
+    - Modified by Shaofan on 9.27, change the id alignment
     A dataset that batchify images into videos
     In the root directory contains files in the format: prefix_{scene_id}_{frame_id}_{view_id}.png
     we batchify the images with the same scene_id and view_id into a video clip with specified length
