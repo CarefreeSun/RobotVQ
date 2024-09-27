@@ -16,7 +16,7 @@ do
         python encode_pizza_width.py --gpu_id $i --split 'train' --normalize --wo_transformer_residual \
         --num_shards 16 --start_shard $start_shard \
         --n_stacked_clip 1 \
-        --weight_path '/mnt/data-rundong/VQ3D-vision-action/0926-4ldec-continue-0920-finetune-pizza-lr1e-6-bs16-open0close1-step60000/checkpoints/step_checkpoint-step_16000.ckpt' &
+        --weight_path '/mnt/data-rundong/VQ3D-vision-action/0924-moredec-continue-0920-finetune-pizza-lr1e-6-bs16-open0close1-step60000/checkpoints/step_checkpoint-step_30000.ckpt' &
     done
 done
 python -c "import time; time.sleep(1*4*60*60)"
