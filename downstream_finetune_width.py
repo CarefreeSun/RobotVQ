@@ -181,7 +181,6 @@ def main():
         max_steps=args.max_steps,
         sync_batchnorm=True,
         check_val_every_n_epoch=None,
-        accumulate_grad_batches=4,
     )
 
     trainer.fit(model, 
