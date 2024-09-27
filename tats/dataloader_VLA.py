@@ -70,7 +70,7 @@ class ImageActionDatasetGripperWidth(Dataset):
                                     'frame_number': num_frames, 'image_indices': instance_data['image_indices'],
                                     'mean': instance_data['mean'], 'std': instance_data['std']}
                     if self.action:
-                        # new_instance['actions'] = instance_data['actions']
+                        new_instance['actions'] = instance_data['actions']
                         new_instance['action_gripper'] = instance_data['action_gripper']
                     self.filenames.append(new_instance)
 
@@ -100,7 +100,7 @@ class ImageActionDatasetGripperWidth(Dataset):
                     video = [img] * self.length
                     if self.action:
                         initial_greeper_state = reset_gripper_width(data['action_gripper'][0][-1])
-                        actions = [[0. for _ in range(6)].append(initial_greeper_state) for _ in range(self.length)]
+                        actions = [[0. for _ in range(6)] + [initial_greeper_state] for _ in range(self.length)]
                 else:
                     for i in range(start, start + self.length):
                         img_filename = data['image_paths'].format(data['image_indices'][i])
@@ -108,11 +108,11 @@ class ImageActionDatasetGripperWidth(Dataset):
                         img = self.transform(img)
                         video.append(img)
                         if self.action:
-                            actions.append(data['action_gripper'][i-1][:-1] + [reset_gripper_width(data['action_gripper'][i-1][-1])])
-                            # if i > 0:
-                            #     actions.append(data['actions'][i-1][:-1] + [reset_gripper_width(data['action_gripper'][i-1][-1])])
-                            # else:
-                            #     actions.append([0. for _ in range(6)] + [reset_gripper_width(data['action_gripper'][0][-1])])
+                            # actions.append(data['action_gripper'][i-1][:-1] + [reset_gripper_width(data['action_gripper'][i-1][-1])])
+                            if i > 0:
+                                actions.append(data['action_gripper'][i][:-1] + [reset_gripper_width(data['action_gripper'][i][-1])])
+                            else:
+                                actions.append([0. for _ in range(6)] + [reset_gripper_width(data['action_gripper'][0][-1])])
                 break
             except:
                 print('Missing image: ' + data['image_paths'].format(data['image_indices'][0]))
