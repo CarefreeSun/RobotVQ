@@ -70,7 +70,7 @@ class ImageActionDatasetGripperWidth(Dataset):
                                     'frame_number': num_frames, 'image_indices': instance_data['image_indices'],
                                     'mean': instance_data['mean'], 'std': instance_data['std']}
                     if self.action:
-                        new_instance['actions'] = instance_data['actions']
+                        # new_instance['actions'] = instance_data['actions']
                         new_instance['action_gripper'] = instance_data['action_gripper']
                     self.filenames.append(new_instance)
 
