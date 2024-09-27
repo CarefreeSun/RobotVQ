@@ -19,7 +19,7 @@ do
         --weight_path '/mnt/data-rundong/VQ3D-vision-action/0926-4ldec-continue-0920-finetune-pizza-lr1e-6-bs16-open0close1-step60000/checkpoints/step_checkpoint-step_16000.ckpt' &
     done
 done
-python -c "import time; time.sleep(1*24*60*60)"
+python -c "import time; time.sleep(1*4*60*60)"
 
 
 # --weight_path '/mnt/data-rundong/VQ3D-vision-action/0920-finetune-pizza-lr1e-6-bs16-open0close1/checkpoints/step_checkpoint-step_56000.ckpt' &
