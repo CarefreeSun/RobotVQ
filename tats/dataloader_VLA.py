@@ -70,7 +70,7 @@ class ImageActionDatasetGripperWidth(Dataset):
                                     'frame_number': num_frames, 'image_indices': instance_data['image_indices'],
                                     'mean': instance_data['mean'], 'std': instance_data['std']}
                     if self.action:
-                        # new_instance['actions'] = instance_data['actions']
+                        new_instance['actions'] = instance_data['actions']
                         new_instance['action_gripper'] = instance_data['action_gripper']
                     self.filenames.append(new_instance)
 
@@ -80,7 +80,7 @@ class ImageActionDatasetGripperWidth(Dataset):
     def __getitem__(self, index):
 
         def reset_gripper_width(x):
-            return 0.0 if x > 0.02 else 1.0
+            return 0.0 if x > 0.07 else 1.0
     
         data = self.filenames[index]
         start = torch.randint(-1, data['frame_number'] - self.length + 1, (1,)).item()
@@ -108,7 +108,7 @@ class ImageActionDatasetGripperWidth(Dataset):
                         img = self.transform(img)
                         video.append(img)
                         if self.action:
-                            actions.append(data['action_gripper'][i][:-1] + [reset_gripper_width(data['action_gripper'][i][-1])])
+                            actions.append(data['actions'][i][:-1] + [reset_gripper_width(data['action_gripper'][i][-1])])
                             # if i > 0:
                             #     actions.append(data['action_gripper'][i][:-1] + [reset_gripper_width(data['action_gripper'][i][-1])])
                             # else:
