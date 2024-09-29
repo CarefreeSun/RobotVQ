@@ -157,11 +157,12 @@ with torch.no_grad():
                                 img = Image.open(img_filename)
                                 img = transform(img)
                                 video.append(img)
+                                action.append(instance_data['action_gripper'][i][:-1] + [reset_gripper_width(instance_data['action_gripper'][i][-1])])
                                 # action.append(instance_data['actions'][i-1] if i > 0 else [0. for _ in range(6)] + [instance_data['actions'][0][-1]])
-                                if i > 0:
-                                    action.append(instance_data['actions'][i-1][:-1] + [reset_gripper_width(instance_data['action_gripper'][i-1][-1])])
-                                else:
-                                    action.append([0. for _ in range(6)] + [reset_gripper_width(instance_data['action_gripper'][0][-1])])
+                                # if i > 0:
+                                #     action.append(instance_data['actions'][i-1][:-1] + [reset_gripper_width(instance_data['action_gripper'][i-1][-1])])
+                                # else:
+                                #     action.append([0. for _ in range(6)] + [reset_gripper_width(instance_data['action_gripper'][0][-1])])
                         videos.append(torch.stack(video).permute(1,0,2,3)) # [C, T, H, W])
                         actions.append(torch.tensor(action)) # [T, 7]
 
