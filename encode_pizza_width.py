@@ -74,7 +74,7 @@ parser.add_argument('--n_stacked_clips', type=int, default=10)
 parser.add_argument('--weight_path', type=str, default='/mnt/data-rundong/VQ3D-vision-action/0531-action111-bridge-noMask-woResidual/checkpoints/step_checkpoint-step_30000.ckpt')
 
 def reset_gripper_width(x):
-    return 0.0 if x > 0.02 else 1.0
+    return 0.0 if x > 0.04 else 1.0
 
 args = parser.parse_args()
 device = f'cuda:{args.gpu_id}'
@@ -157,7 +157,7 @@ with torch.no_grad():
                                 img = Image.open(img_filename)
                                 img = transform(img)
                                 video.append(img)
-                                action.append(instance_data['action_gripper'][i][:-1] + [reset_gripper_width(instance_data['action_gripper'][i][-1])])
+                                action.append(instance_data['actions'][i][:-1] + [reset_gripper_width(instance_data['action_gripper'][i][-1])])
                                 # action.append(instance_data['actions'][i-1] if i > 0 else [0. for _ in range(6)] + [instance_data['actions'][0][-1]])
                                 # if i > 0:
                                 #     action.append(instance_data['actions'][i-1][:-1] + [reset_gripper_width(instance_data['action_gripper'][i-1][-1])])
