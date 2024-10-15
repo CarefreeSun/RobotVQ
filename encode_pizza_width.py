@@ -209,7 +209,7 @@ with torch.no_grad():
                                 'start_frame': instance_data['image_indices'][6*(start+stack_cnt) - 6] if (start+stack_cnt) > 0 else -1,
                                 'task_description': instance_data['task_description'],
                                 'scene_description': instance_data['scene_description'],
-                                'clip_description': instance_data['descriptions'][disc_id] if (start+stack_cnt) != 0 else "",
+                                'clip_description': instance_data['descriptions'][disc_id] if (((start+stack_cnt) != 0) and (disc_id is not None)) else "",
                                 'video_tokens': video_tokens[stack_cnt].tolist(),
                                 'action_tokens': action_tokens[stack_cnt].tolist(),
                             }
