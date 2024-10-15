@@ -719,7 +719,7 @@ class ActionDecoder(nn.Module):
         super().__init__()
         self.fc1 = nn.Linear(embed_dim * output_dim, hidden_dim)
         self.act1 = SiLU()
-        self.dropout1 = nn.Dropout(0.1)
+        self.dropout1 = nn.Dropout(0.5)
         self.fc2 = nn.Linear(hidden_dim, output_dim)
         self.start_block = nn.Sequential(
             SiLU(),
