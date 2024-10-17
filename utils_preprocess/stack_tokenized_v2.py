@@ -27,15 +27,21 @@ for i in range(args.start_shard, args.start_shard+args.num_shards):
     while True:
         line_cnt += 1
         line = lines[line_cnt]
+        instance_data = json.loads(line)
+        trajectory_id = instance_data['trajectory_id']
+        view = instance_data['view']
+        start_frame = instance_data['start_frame']
 
-        new_line_cnt = line_cnt + 6
+        if start_frame == -1:
+            new_line_cnt = line_cnt + 1
+        else:
+            new_line_cnt = line_cnt + 6
+            
         if new_line_cnt == n_lines:
             break
         new_line = lines[new_line_cnt]
 
-        instance_data = json.loads(line)
-        trajectory_id = instance_data['trajectory_id']
-        view = instance_data['view']
+        
         new_instance_data = json.loads(new_line)
         new_trajectory_id = new_instance_data['trajectory_id']
         new_view = new_instance_data['view']
