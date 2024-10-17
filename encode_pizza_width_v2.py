@@ -1,5 +1,5 @@
-# version 2
-
+# version 2, created on 2024.10.17
+# every frame can be the start frame of an episode, not only 6x frames
 
 import json
 import argparse
@@ -145,47 +145,47 @@ with torch.no_grad():
                 num_start = num_frames - 5
 
                 for start in range(0, num_start, args.n_stacked_clips):
-                    videos, actions = [], []
-                    for stack_cnt in range(args.n_stacked_clips): 
-                        if start + stack_cnt == num_start:
-                            break
-                        video, action = [], []
-                        # if start is 0, encode 6 duplicate first frame and 6 null action
-                        # else, encode frame i - 1 to i + 4 and action i - 1 to i + 4
-                        # note that frame id refers to the id in frame index list, not the actual frame id when collecting since some frame is lost
+                    try:
+                        videos, actions = [], []
+                        for stack_cnt in range(args.n_stacked_clips): 
+                            if start + stack_cnt == num_start:
+                                break
+                            video, action = [], []
+                            # if start is 0, encode 6 duplicate first frame and 6 null action
+                            # else, encode frame i - 1 to i + 4 and action i - 1 to i + 4
+                            # note that frame id refers to the id in frame index list, not the actual frame id when collecting since some frame is lost
 
-                        if start+stack_cnt == 0: # video will be self.length duplicates of frame 0, and each action entry will be [0] * 7
-                            # img_filename = instance_format.format(instance_data['image_indices'][0])
-                            if dataset_name == 'pizza':
-                                img_filename = instance_format.format(instance_data['image_indices'][0])
-                            else:
-                                img_filename = instance_format.format(instance_data['image_indices'][0])
-                            img = Image.open(img_filename)
-                            img = transform(img)
-                            video = [img] * args.sequence_length
-                            action = [[0. for _ in range(6)] + [reset_gripper_width(instance_data['action_gripper'][0][-1])] for _ in range(args.sequence_length)]
-                        else:
-                            for i in range(start + stack_cnt - 1, start + stack_cnt + 5):
-                                img_filename = instance_format.format(instance_data['image_indices'][i])
+                            if start+stack_cnt == 0: # video will be self.length duplicates of frame 0, and each action entry will be [0] * 7
+                                # img_filename = instance_format.format(instance_data['image_indices'][0])
+                                if dataset_name == 'pizza':
+                                    img_filename = instance_format.format(instance_data['image_indices'][0])
+                                else:
+                                    img_filename = instance_format.format(instance_data['image_indices'][0])
                                 img = Image.open(img_filename)
                                 img = transform(img)
-                                video.append(img)
-                                action.append(instance_data['actions'][i][:-1] + [reset_gripper_width(instance_data['action_gripper'][i][-1])])
+                                video = [img] * args.sequence_length
+                                action = [[0. for _ in range(6)] + [reset_gripper_width(instance_data['action_gripper'][0][-1])] for _ in range(args.sequence_length)]
+                            else:
+                                for i in range(start + stack_cnt - 1, start + stack_cnt + 5):
+                                    img_filename = instance_format.format(instance_data['image_indices'][i])
+                                    img = Image.open(img_filename)
+                                    img = transform(img)
+                                    video.append(img)
+                                    action.append(instance_data['actions'][i][:-1] + [reset_gripper_width(instance_data['action_gripper'][i][-1])])
 
-                        videos.append(torch.stack(video).permute(1,0,2,3)) # [C, T, H, W])
-                        actions.append(torch.tensor(action)) # [T, 7]
+                            videos.append(torch.stack(video).permute(1,0,2,3)) # [C, T, H, W])
+                            actions.append(torch.tensor(action)) # [T, 7]
 
-                    videos = torch.stack(videos).to(device)
-                    actions = torch.stack(actions).to(device)
-                    if args.normalize:
-                        actions = (actions - torch.tensor(mean).to(device)) / torch.tensor(std).to(device)
-                    n_stacked = videos.shape[0]
+                        videos = torch.stack(videos).to(device)
+                        actions = torch.stack(actions).to(device)
+                        if args.normalize:
+                            actions = (actions - torch.tensor(mean).to(device)) / torch.tensor(std).to(device)
+                        n_stacked = videos.shape[0]
 
-                    _, _, vq_output, vq_output_action = model(videos, actions)
+                        _, _, vq_output, vq_output_action = model(videos, actions)
 
-                    video_tokens, action_tokens = vq_output['encodings'].reshape(n_stacked, -1), vq_output_action['encodings'].reshape(n_stacked, -1)
+                        video_tokens, action_tokens = vq_output['encodings'].reshape(n_stacked, -1), vq_output_action['encodings'].reshape(n_stacked, -1)
 
-                    try:
                         for stack_cnt in range(n_stacked):
                             # search for proper clip description
                             disc_id = None
