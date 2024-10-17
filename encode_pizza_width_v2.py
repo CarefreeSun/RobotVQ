@@ -132,11 +132,22 @@ with torch.no_grad():
                 # each instance_info contains multiple frames, thus we need to handle them batch by batch
                 num_frames = instance_data["frame_number"]
 
-                num_start = num_frames // 6 + 1
+                # 去掉最后补全用的重复帧
+                prev_frame_id = -100
+                for frame_pos in range(num_frames):
+                    cur_frame_id = instance_data['image_indices'][frame_pos]
+                    if cur_frame_id == prev_frame_id: # 重复
+                        num_frames = frame_pos
+                        break
+                    # 未重复
+                    prev_frame_id = cur_frame_id
+
+
+                num_start = num_frames - 5
 
                 for start in range(0, num_start, args.n_stacked_clips):
                     videos, actions = [], []
-                    for stack_cnt in range(args.n_stacked_clips):
+                    for stack_cnt in range(args.n_stacked_clips): 
                         if start + stack_cnt == num_start:
                             break
                         video, action = [], []
@@ -178,34 +189,15 @@ with torch.no_grad():
                     _, _, vq_output, vq_output_action = model(videos, actions)
 
                     video_tokens, action_tokens = vq_output['encodings'].reshape(n_stacked, -1), vq_output_action['encodings'].reshape(n_stacked, -1)
-
-                    # add a line with the following entries: task_description (trajectory_language), scene_description (instance_data['descriptions'][0])
-                    # video_tokens, action_tokens, is_start_frame (0 or 1)
-                    # try:
-                    #     for stack_cnt in range(n_stacked):
-                    #         ret = {
-                    #             'trajectory_id': instance_data['trajectory_id'],
-                    #             'view': instance_data['view'],
-                    #             'start_frame': 6*(start+stack_cnt) - 6 if (start+stack_cnt) > 0 else -1,
-                    #             'task_description': instance_data['task_description'],
-                    #             'scene_description': instance_data['scene_description'],
-                    #             'clip_description': instance_data['descriptions'][str(6*(start+stack_cnt)-1)] if (start+stack_cnt) != 0 else "",
-                    #             'video_tokens': video_tokens[stack_cnt].tolist(),
-                    #             'action_tokens': action_tokens[stack_cnt].tolist(),
-                    #         }
-                    #         dst_file.write(json.dumps(ret) + '\n')
-                    #         dst_file.flush()
-                    # except:
-                    #     error_log.write(line)
-                    #     error_log.flush()
                     try:
-                        # search for proper clip description
-                        disc_id = None
-                        for i in range(6*(start+stack_cnt) - 6, 6*(start+stack_cnt)):
-                            if str(instance_data['image_indices'][i]) in instance_data['descriptions']:
-                                disc_id = str(instance_data['image_indices'][i])
 
                         for stack_cnt in range(n_stacked):
+                            # search for proper clip description
+                            disc_id = None
+                            for i in range(6*(start+stack_cnt) - 6, 6*(start+stack_cnt)):
+                                if str(instance_data['image_indices'][i]) in instance_data['descriptions']:
+                                    disc_id = str(instance_data['image_indices'][i])
+                                    
                             ret = {
                                 'trajectory_id': instance_data['trajectory_id'],
                                 'view': instance_data['view'],
