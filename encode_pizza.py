@@ -188,13 +188,13 @@ with torch.no_grad():
                     #     error_log.write(line)
                     #     error_log.flush()
                     try:
-                        # search for proper clip description
-                        disc_id = None
-                        for i in range(6*(start+stack_cnt) - 6, 6*(start+stack_cnt)):
-                            if str(instance_data['image_indices'][i]) in instance_data['descriptions']:
-                                disc_id = str(instance_data['image_indices'][i])
 
                         for stack_cnt in range(n_stacked):
+                            # search for proper clip description
+                            disc_id = None
+                            for i in range(6*(start+stack_cnt) - 6, 6*(start+stack_cnt)):
+                                if str(instance_data['image_indices'][i]) in instance_data['descriptions']:
+                                    disc_id = str(instance_data['image_indices'][i])
                             ret = {
                                 'trajectory_id': instance_data['trajectory_id'],
                                 'view': instance_data['view'],

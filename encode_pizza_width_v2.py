@@ -166,17 +166,13 @@ with torch.no_grad():
                             video = [img] * args.sequence_length
                             action = [[0. for _ in range(6)] + [reset_gripper_width(instance_data['action_gripper'][0][-1])] for _ in range(args.sequence_length)]
                         else:
-                            for i in range(6*(start+stack_cnt) - 6, 6*(start+stack_cnt)):
+                            for i in range(start + stack_cnt - 1, start + stack_cnt + 5):
                                 img_filename = instance_format.format(instance_data['image_indices'][i])
                                 img = Image.open(img_filename)
                                 img = transform(img)
                                 video.append(img)
                                 action.append(instance_data['actions'][i][:-1] + [reset_gripper_width(instance_data['action_gripper'][i][-1])])
-                                # action.append(instance_data['actions'][i-1] if i > 0 else [0. for _ in range(6)] + [instance_data['actions'][0][-1]])
-                                # if i > 0:
-                                #     action.append(instance_data['actions'][i-1][:-1] + [reset_gripper_width(instance_data['action_gripper'][i-1][-1])])
-                                # else:
-                                #     action.append([0. for _ in range(6)] + [reset_gripper_width(instance_data['action_gripper'][0][-1])])
+
                         videos.append(torch.stack(video).permute(1,0,2,3)) # [C, T, H, W])
                         actions.append(torch.tensor(action)) # [T, 7]
 
@@ -194,14 +190,16 @@ with torch.no_grad():
                         for stack_cnt in range(n_stacked):
                             # search for proper clip description
                             disc_id = None
-                            for i in range(6*(start+stack_cnt) - 6, 6*(start+stack_cnt)):
-                                if str(instance_data['image_indices'][i]) in instance_data['descriptions']:
-                                    disc_id = str(instance_data['image_indices'][i])
-                                    
+                            if (start + stack_cnt != 0):
+                                start_frame = start + stack_cnt - 1
+                                for i in range(max(0, start_frame - 1), min(num_frames, start_frame + 2)): # 搜索开始帧的前帧到后帧
+                                    if str(instance_data['image_indices'][i]) in instance_data['descriptions']:
+                                        disc_id = str(instance_data['image_indices'][i])
+
                             ret = {
                                 'trajectory_id': instance_data['trajectory_id'],
                                 'view': instance_data['view'],
-                                'start_frame': instance_data['image_indices'][6*(start+stack_cnt) - 6] if (start+stack_cnt) > 0 else -1,
+                                'start_frame': instance_data['image_indices'][start + stack_cnt - 1] if (start+stack_cnt) > 0 else -1,
                                 'task_description': instance_data['task_description'],
                                 'scene_description': instance_data['scene_description'],
                                 'clip_description': instance_data['descriptions'][disc_id] if (((start+stack_cnt) != 0) and (disc_id is not None)) else "",
