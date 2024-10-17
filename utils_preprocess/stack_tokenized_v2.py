@@ -20,7 +20,7 @@ for i in range(args.start_shard, args.start_shard+args.num_shards):
     dst_filepath = os.path.join(args.dst, args.split, f'{i}.jsonl')
     os.makedirs(os.path.dirname(dst_filepath), exist_ok=True)
     dst_file = open(dst_filepath, 'w')
-    # read the first 6 lines
+    # read and store all lines
     lines = f.readlines()
     n_lines = len(lines)
     line_cnt = -1
@@ -32,8 +32,10 @@ for i in range(args.start_shard, args.start_shard+args.num_shards):
         view = instance_data['view']
         start_frame = instance_data['start_frame']
 
-        if start_frame == -1:
+        # if 6 duplicate first frames, next clip is just next line (frame 0)
+        if start_frame == -1: 
             new_line_cnt = line_cnt + 1
+        # else, next clip is 6 frames after
         else:
             new_line_cnt = line_cnt + 6
             
