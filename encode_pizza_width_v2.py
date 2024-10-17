@@ -1,5 +1,5 @@
 # version 2
-# 
+
 
 import json
 import argparse
@@ -142,7 +142,6 @@ with torch.no_grad():
                     # 未重复
                     prev_frame_id = cur_frame_id
 
-
                 num_start = num_frames - 5
 
                 for start in range(0, num_start, args.n_stacked_clips):
@@ -152,7 +151,7 @@ with torch.no_grad():
                             break
                         video, action = [], []
                         # if start is 0, encode 6 duplicate first frame and 6 null action
-                        # else, encode frame 6i-6 to 6i-1 and action 6i-6 to 6i-1
+                        # else, encode frame i - 1 to i + 4 and action i - 1 to i + 4
                         # note that frame id refers to the id in frame index list, not the actual frame id when collecting since some frame is lost
 
                         if start+stack_cnt == 0: # video will be self.length duplicates of frame 0, and each action entry will be [0] * 7
@@ -185,8 +184,8 @@ with torch.no_grad():
                     _, _, vq_output, vq_output_action = model(videos, actions)
 
                     video_tokens, action_tokens = vq_output['encodings'].reshape(n_stacked, -1), vq_output_action['encodings'].reshape(n_stacked, -1)
-                    try:
 
+                    try:
                         for stack_cnt in range(n_stacked):
                             # search for proper clip description
                             disc_id = None
