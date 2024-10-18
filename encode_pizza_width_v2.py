@@ -191,7 +191,7 @@ with torch.no_grad():
                             disc_id = None
                             if (start + stack_cnt != 0):
                                 start_frame = start + stack_cnt - 1
-                                for i in range(max(0, start_frame - 1), min(num_frames, start_frame + 2)): # 搜索开始帧的前帧到后帧
+                                for i in range(max(0, start_frame - 2), min(num_frames, start_frame + 3)): # 搜索开始帧的前帧到后帧
                                     if str(instance_data['image_indices'][i]) in instance_data['descriptions']:
                                         disc_id = str(instance_data['image_indices'][i])
 
