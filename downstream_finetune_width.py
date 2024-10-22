@@ -75,7 +75,8 @@ def main():
     parser.add_argument('--val_check_interval', type=int, default=500)
     parser.add_argument('--log_interval', type=int, default=20)
     parser.add_argument('--save_step_frequency', type=int, default=2000)
-    # parser.add_argument('--gripper_width', type='store_true', help="input pizza data with action_gripper field, refer to the width of gripper")
+    parser.add_argument('--crop', type='store_true', help="crop the input image before resize")
+    parser.add_argument('--crop_param', nargs='+', type=int, default=(280, 80, 640, 640), help='(x, y, width, height)')
 
     args = parser.parse_args()
 

@@ -24,7 +24,15 @@ class ForkedPdb(pdb_original.Pdb):
         finally:
             sys.stdin = _stdin
 
+class CustomCrop:
+    def __init__(self, crop_param=(280, 80, 640, 640)):
+        self.x = crop_param[0]
+        self.y = crop_param[1]
+        self.width = crop_param[2]
+        self.height = crop_param[3]
 
+    def __call__(self, img):
+        return img.crop((self.x, self.y, self.x + self.width, self.y + self.height))
 
 # Shifts src_tf dim to dest dim
 # i.e. shift_dim(x, 1, -1) would be (b, c, t, h, w) -> (b, t, h, w, c)

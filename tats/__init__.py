@@ -10,5 +10,5 @@ from .tats_dino_action import VQGANDinoV2Action, VQGANDinoV2ActionEval
 from .tats_moreactdeclayer import VQGANDinoV2Action as VQFinetune
 from .tats_moreactdeclayer import VQGANDinoV2ActionEval as VQFinetuneEval
 from .tats_transformer import Net2NetTransformer
-from .utils import count_parameters, AverageMeter
+from .utils import count_parameters, AverageMeter, CustomCrop
 

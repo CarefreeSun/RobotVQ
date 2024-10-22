@@ -7,12 +7,14 @@ import argparse
 import json
 import copy
 
+from .utils import CustomCrop
 
 class ImageActionDatasetGripperWidth(Dataset):
     '''
     - Modified Version by Shaofan on 9.6, add pizza dataset
     - Modified by Shaofan on 9.20, dealing with gripper width
     - Modified by Shaofan on 9.27, change the id alignment
+    - Modified by Shaofan on 10.22, add image crop
     A dataset that batchify images into videos
     In the root directory contains files in the format: prefix_{scene_id}_{frame_id}_{view_id}.png
     we batchify the images with the same scene_id and view_id into a video clip with specified length
@@ -21,12 +23,21 @@ class ImageActionDatasetGripperWidth(Dataset):
     def __init__(self, args, action=False, split='train', transform=None, return_mean_std=False):
         self.data_root = args.data_root
         # self.data_root = args.data_root
+        assert (transform is None) and args.crop # debug
         if transform is None:
-            self.transform = transforms.Compose([
-                transforms.Resize((args.resolution, args.resolution)),
-                transforms.ToTensor(),
-                transforms.Normalize((0.5, 0.5, 0.5), (1., 1., 1.)) # To [-0.5, 0.5]
-            ])
+            if args.crop:
+                self.transform = transforms.Compose([
+                    CustomCrop(crop_param=args.crop_param),
+                    transforms.Resize((args.resolution, args.resolution)),
+                    transforms.ToTensor(),
+                    transforms.Normalize((0.5, 0.5, 0.5), (1., 1., 1.)) # To [-0.5, 0.5]
+                ])
+            else:
+                self.transform = transforms.Compose([
+                    transforms.Resize((args.resolution, args.resolution)),
+                    transforms.ToTensor(),
+                    transforms.Normalize((0.5, 0.5, 0.5), (1., 1., 1.)) # To [-0.5, 0.5]
+                ])
         else:
             self.transform = transform
         self.length = args.sequence_length
