@@ -25,7 +25,7 @@ class ForkedPdb(pdb_original.Pdb):
             sys.stdin = _stdin
 
 class CustomCrop:
-    def __init__(self, crop_param=(280, 80, 640, 640)):
+    def __init__(self, crop_param=(200, 40, 680, 680)):
         self.x = crop_param[0]
         self.y = crop_param[1]
         self.width = crop_param[2]

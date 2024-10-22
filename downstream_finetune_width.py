@@ -76,7 +76,7 @@ def main():
     parser.add_argument('--log_interval', type=int, default=20)
     parser.add_argument('--save_step_frequency', type=int, default=2000)
     parser.add_argument('--crop', type='store_true', help="crop the input image before resize")
-    parser.add_argument('--crop_param', nargs='+', type=int, default=(280, 80, 640, 640), help='(x, y, width, height)')
+    parser.add_argument('--crop_param', nargs='+', type=int, default=(200, 40, 680, 680), help='(x, y, width, height)')
 
     args = parser.parse_args()
 
