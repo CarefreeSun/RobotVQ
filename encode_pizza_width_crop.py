@@ -84,7 +84,7 @@ assert args.sequence_length == 6
 
 assert args.normalize and args.wo_transformer_residual
 
-args.dst_dir = '/mnt/data-rundong/robot_datasets/' + args.weight_path.split('/')[-3] + '_step8000' + '_tokenized'
+args.dst_dir = '/mnt/data-rundong/robot_datasets/' + args.weight_path.split('/')[-3] + '_step10000' + '_tokenized'
 
 model = VQFinetuneEval(args)
 state_dict = torch.load(args.weight_path, map_location='cpu')['state_dict']
@@ -160,11 +160,7 @@ with torch.no_grad():
                                 img = transform(img)
                                 video.append(img)
                                 action.append(instance_data['actions'][i][:-1] + [reset_gripper_width(instance_data['action_gripper'][i][-1])])
-                                # action.append(instance_data['actions'][i-1] if i > 0 else [0. for _ in range(6)] + [instance_data['actions'][0][-1]])
-                                # if i > 0:
-                                #     action.append(instance_data['actions'][i-1][:-1] + [reset_gripper_width(instance_data['action_gripper'][i-1][-1])])
-                                # else:
-                                #     action.append([0. for _ in range(6)] + [reset_gripper_width(instance_data['action_gripper'][0][-1])])
+
                         videos.append(torch.stack(video).permute(1,0,2,3)) # [C, T, H, W])
                         actions.append(torch.tensor(action)) # [T, 7]
 
@@ -178,25 +174,6 @@ with torch.no_grad():
 
                     video_tokens, action_tokens = vq_output['encodings'].reshape(n_stacked, -1), vq_output_action['encodings'].reshape(n_stacked, -1)
 
-                    # add a line with the following entries: task_description (trajectory_language), scene_description (instance_data['descriptions'][0])
-                    # video_tokens, action_tokens, is_start_frame (0 or 1)
-                    # try:
-                    #     for stack_cnt in range(n_stacked):
-                    #         ret = {
-                    #             'trajectory_id': instance_data['trajectory_id'],
-                    #             'view': instance_data['view'],
-                    #             'start_frame': 6*(start+stack_cnt) - 6 if (start+stack_cnt) > 0 else -1,
-                    #             'task_description': instance_data['task_description'],
-                    #             'scene_description': instance_data['scene_description'],
-                    #             'clip_description': instance_data['descriptions'][str(6*(start+stack_cnt)-1)] if (start+stack_cnt) != 0 else "",
-                    #             'video_tokens': video_tokens[stack_cnt].tolist(),
-                    #             'action_tokens': action_tokens[stack_cnt].tolist(),
-                    #         }
-                    #         dst_file.write(json.dumps(ret) + '\n')
-                    #         dst_file.flush()
-                    # except:
-                    #     error_log.write(line)
-                    #     error_log.flush()
                     try:
 
                         for stack_cnt in range(n_stacked):
