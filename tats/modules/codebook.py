@@ -53,6 +53,12 @@ class Codebook(nn.Module):
         distances = (flat_inputs ** 2).sum(dim=1, keepdim=True) \
                     - 2 * flat_inputs @ self.embeddings.t() \
                     + (self.embeddings.t() ** 2).sum(dim=0, keepdim=True) # [bthw, c]
+        
+        # KL divergence to avoid index collapse
+        # calculate probability
+        p_indices = F.softmax(-distances, dim=1).mean(dim=0) # [c]
+        # -Sum(p log 1/pN) = Sum(p log pN)
+        kl_reg = (p_indices * torch.log(p_indices * self.n_codes + 1e-10)).sum()
 
         encoding_indices = torch.argmin(distances, dim=1)
         encode_onehot = F.one_hot(encoding_indices, self.n_codes).type_as(flat_inputs) # [bthw, ncode]
@@ -94,7 +100,7 @@ class Codebook(nn.Module):
         perplexity = torch.exp(-torch.sum(avg_probs * torch.log(avg_probs + 1e-10)))
 
         return dict(embeddings=embeddings_st, encodings=encoding_indices,
-                    commitment_loss=commitment_loss, perplexity=perplexity)
+                    commitment_loss=commitment_loss, perplexity=perplexity, kl_reg=kl_reg)
 
     def dictionary_lookup(self, encodings):
         embeddings = F.embedding(encodings, self.embeddings)
