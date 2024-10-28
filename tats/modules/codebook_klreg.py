@@ -12,7 +12,7 @@ from ..utils import shift_dim
 class Codebook(nn.Module):
     def __init__(self, n_codes, embedding_dim, no_random_restart=False, restart_thres=1.0):
         super().__init__()
-        self.register_parameter('embeddings', torch.randn(n_codes, embedding_dim))
+        self.register_parameter('embeddings', nn.Parameter(torch.randn(n_codes, embedding_dim)))
         self.register_buffer('N', torch.zeros(n_codes))
         self.register_buffer('z_avg', self.embeddings.data.clone())
 
