@@ -58,7 +58,7 @@ class Codebook(nn.Module):
         # calculate probability
         p_indices = F.softmax(-distances, dim=1).mean(dim=0) # [c]
         # -Sum(p log 1/pN) = Sum(p log pN)
-        kl_reg = 0.01 * (p_indices * torch.log(p_indices * self.n_codes + 1e-10)).sum()
+        kl_reg = 0.1 * (p_indices * torch.log(p_indices * self.n_codes + 1e-10)).sum()
 
         encoding_indices = torch.argmin(distances, dim=1)
         encode_onehot = F.one_hot(encoding_indices, self.n_codes).type_as(flat_inputs) # [bthw, ncode]
