@@ -89,10 +89,10 @@ class VQGANDinoV2Action(pl.LightningModule):
 
         self.l1_weight = args.l1_weight
         self.l1_action_weight = args.l1_action_weight
-        # self.use_pixel_weight = args.use_pixel_weight
-        # self.frame_diff_thresh = args.frame_diff_thresh
-        # self.high_weight = args.high_weight
-        # self.low_weight = args.low_weight
+        self.use_pixel_weight = args.use_pixel_weight
+        self.frame_diff_thresh = args.frame_diff_thresh
+        self.high_weight = args.high_weight
+        self.low_weight = args.low_weight
         self.save_hyperparameters()
 
     @property
@@ -102,18 +102,18 @@ class VQGANDinoV2Action(pl.LightningModule):
         return tuple([s // d for s, d in zip(input_shape,
                                              self.args.downsample)])
     
-    # def pixel_weight(self, x: torch.Tensor):
-    #     # x.shape = [B, C, T, H, W], value is in [-0.5, 0.5]
-    #     # calculate difference between adjacent frames to determine pixel-level reconstruction loss weight
-    #     B, C, T, H, W = x.shape
-    #     thresh = self.frame_diff_thresh
-    #     high_weight = self.high_weight
-    #     low_weight = self.low_weight
-    #     with torch.no_grad():
-    #         weight_map = torch.ones([B, T, H, W], device=x.device) # keep first frame average, change weights of other frames
-    #         frame_diff = (x[:, :, 1:, :, :] - x[:, :, :-1, :, :]).sum(dim=1)
-    #         weight_map[:, 1:, :, :] = torch.where(frame_diff > thresh,  high_weight, low_weight)
-    #     return weight_map
+    def pixel_weight(self, x: torch.Tensor):
+        # x.shape = [B, C, T, H, W], value is in [-0.5, 0.5]
+        # calculate difference between adjacent frames to determine pixel-level reconstruction loss weight
+        B, C, T, H, W = x.shape
+        thresh = self.frame_diff_thresh
+        high_weight = self.high_weight
+        low_weight = self.low_weight
+        with torch.no_grad():
+            weight_map = torch.ones([B, T, H, W], device=x.device) # keep first frame average, change weights of other frames
+            frame_diff = (x[:, :, 1:, :, :] - x[:, :, :-1, :, :]).sum(dim=1)
+            weight_map[:, 1:, :, :] = torch.where(frame_diff > thresh,  high_weight, low_weight)
+        return weight_map
 
     def encode(self, x, x_action, include_embeddings=False):
         z_vision = self.pre_vq_conv(self.encoder(x)) # B, embed_dim, t, h, w  *t, h, w is downsampled T, H, W*
@@ -192,12 +192,13 @@ class VQGANDinoV2Action(pl.LightningModule):
         x_recon = self.decoder(self.post_vq_conv(vq_embeddings))
         x_recon_action = self.action_decoder_plus(vq_embeddings_action.squeeze(-1).permute(0, 2, 1, 3)) # B, T, embed_dim, 7
 
-        # if self.use_pixel_weight:
-        #     recon_loss = (x_recon - x).abs().mean(dim=1) # B, T, H, W
-        #     weight_vision = self.pixel_weight(x) # B, T, H, W
-        #     recon_loss = (recon_loss * weight_vision).mean() * self.l1_weight
-        # else:
-        recon_loss = F.l1_loss(x_recon, x) * self.l1_weight
+        assert self.use_pixel_weight
+        if self.use_pixel_weight:
+            recon_loss = (x_recon - x).abs().mean(dim=1) # B, T, H, W
+            weight_vision = self.pixel_weight(x) # B, T, H, W
+            recon_loss = (recon_loss * weight_vision).mean() * self.l1_weight
+        else:
+            recon_loss = F.l1_loss(x_recon, x) * self.l1_weight
 
         recon_loss_action = F.l1_loss(x_recon_action, x_action) * self.l1_action_weight
 
