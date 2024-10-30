@@ -61,7 +61,7 @@ parser.add_argument('--image_channels', type=int, default=3)
 
 parser.add_argument('--src', type=str, default='/mnt/data-rundong/robot_datasets/tokenizer-training')
 parser.add_argument("--dataset_names", nargs='+', type=str, 
-                    default=("pizza_width", 
+                    default=("pizza_dup_grip_10_19", 
                             ))
 parser.add_argument("--image_root", nargs='+', type=str, 
                     default=("/mnt/robotdata/datasets/pizza_robot", 
@@ -129,7 +129,7 @@ with torch.no_grad():
                 elif dataset_name == 'rt1':
                     instance_format = image_root + '/outputimage_' + str(instance_data['trajectory_id']) + '_{}' + '.png'
                 elif 'pizza' in dataset_name:
-                    instance_format = image_root + '/' + str(instance_data['ID']) + '/' + str(instance_data['trajectory_id']) + '/images/right_rgb' + '/{:03d}' + '.jpg'
+                    instance_format = image_root + '/' + str(instance_data['ID']) + '/' + str(instance_data['trajectory_id']).split('_')[0] + '/images/right_rgb' + '/{:03d}' + '.jpg'
                 else:
                     assert False
                 # each instance_info contains multiple frames, thus we need to handle them batch by batch
