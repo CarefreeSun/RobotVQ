@@ -518,7 +518,7 @@ class ActionDecoder(nn.Module):
         self.fc1 = nn.Linear(embed_dim, hidden_dim * 2)
         self.act1 = SiLU()
         self.dropout1 = nn.Dropout(0.5)
-        self.fc2 = nn.Linear(hidden_dim * 4, hidden_dim * 4)
+        self.fc2 = nn.Linear(hidden_dim * 2, hidden_dim * 4)
         self.act2 = SiLU()
         self.dropout2 = nn.Dropout(0.5)
         self.fc3 = nn.Linear(hidden_dim * 4, hidden_dim)
