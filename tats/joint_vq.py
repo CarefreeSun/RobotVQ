@@ -527,7 +527,7 @@ class ActionDecoder(nn.Module):
         self.fc4 = nn. Linear(hidden_dim, output_dim)
         self.start_block = nn.Sequential(
             SiLU(),
-            nn.LayerNorm(embed_dim * output_dim)
+            nn.LayerNorm(embed_dim)
         )
         self.activation = activation
 
