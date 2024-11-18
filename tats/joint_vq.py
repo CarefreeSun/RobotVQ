@@ -139,7 +139,9 @@ class VQGANDinoV2Action(pl.LightningModule):
         # x_action is in shape B, T, action_dim
 
         z_vision = self.pre_vq_conv(self.encoder(x)) # B, embed_dim, t, h, w  *t, h, w is downsampled T, H, W*
-        z_action = self.action_encoder(x_action if x_action_masked is None else x_action_masked).permute(0, 2, 1, 3) # B, embed_dim, T, 3
+        z_action = self.action_encoder(x_action if x_action_masked is None else x_action_masked)
+        print("v_shape: {}, a_shape: {}".format(z_vision.shape, z_action.shape))
+        z_action = z_action.permute(0, 2, 1, 3) # B, embed_dim, T, 3
 
         v_shape = z_vision.shape
         a_shape = z_action.shape
