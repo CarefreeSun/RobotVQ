@@ -468,7 +468,8 @@ class ActionEncoder(nn.Module):
         h = self.act(h)
         h = self.dropout(h)
         h = self.fc2(h)
-        h = self.final_block(h) # 
+        h = self.final_block(h)
+        h = h.unsqueeze(-1) # 
         return h
 
 class ActionEncoderStack(nn.Module):
