@@ -93,8 +93,23 @@ class ImageActionDatasetGripperWidth(Dataset):
         def reset_gripper_width(x):
             return 0.0 if x > 0.07 else 1.0
     
+    
         data = self.filenames[index]
-        start = torch.randint(-1, data['frame_number'] - self.length + 1, (1,)).item()
+
+        # 去掉最后补全用的重复帧
+        num_frames = data['frame_number']
+        prev_frame_id = -100
+        for frame_pos in range(num_frames):
+            cur_frame_id = data['image_indices'][frame_pos]
+            if cur_frame_id == prev_frame_id: # 重复
+                num_frames = frame_pos
+                break
+            # 未重复
+            prev_frame_id = cur_frame_id
+        data['frame_number'] = num_frames
+        # num_start = num_frames - 5
+
+        start = torch.randint(-1, data['frame_number'] - self.length - 1, (1,)).item()
         video = []
         actions = []
 
@@ -108,26 +123,26 @@ class ImageActionDatasetGripperWidth(Dataset):
                     img_filename = data['image_paths'].format(data['image_indices'][0])
                     img = Image.open(img_filename)
                     img = self.transform(img)
-                    video = [img] * self.length
+                    video = [img] * 2
                     if self.action:
                         initial_greeper_state = reset_gripper_width(data['action_gripper'][0][-1])
                         actions = [[0. for _ in range(6)] + [initial_greeper_state] for _ in range(self.length)]
                 else:
+                    img_start_path = data['image_paths'].format(data['image_indices'][start])
+                    img_start = Image.open(img_start_path)
+                    img_start = self.transform(img_start)
+                    img_end_path = data['image_paths'].format(data['image_indices'][start + self.length])
+                    img_end = Image.open(img_end_path)
+                    img_end = self.transform(img_end)
+                    video = [img_start, img_end]
+                    
                     for i in range(start, start + self.length):
-                        img_filename = data['image_paths'].format(data['image_indices'][i])
-                        img = Image.open(img_filename)
-                        img = self.transform(img)
-                        video.append(img)
                         if self.action:
                             actions.append(data['actions'][i][:-1] + [reset_gripper_width(data['action_gripper'][i][-1])])
-                            # if i > 0:
-                            #     actions.append(data['action_gripper'][i][:-1] + [reset_gripper_width(data['action_gripper'][i][-1])])
-                            # else:
-                            #     actions.append([0. for _ in range(6)] + [reset_gripper_width(data['action_gripper'][0][-1])])
                 break
             except:
                 print('Missing image: ' + data['image_paths'].format(data['image_indices'][0]))
-                start = torch.randint(-1, data['frame_number'] - self.length + 1, (1,)).item() # resample
+                start = torch.randint(-1, data['frame_number'] - self.length - 1, (1,)).item() # resample
         
         if self.action and self.mask_action:
             mask_indices = torch.randperm(self.length)[:int(self.length * self.mask_action_ratio)]
