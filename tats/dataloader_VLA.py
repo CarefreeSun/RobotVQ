@@ -67,7 +67,7 @@ class ImageActionDatasetGripperWidth(Dataset):
                 for line in f:
                     instance_data = json.loads(line)
                     num_frames = instance_data['frame_number']
-                    if num_frames < self.length:
+                    if num_frames < self.length * 4:
                         continue
                     if dataset_name == 'bridge2':
                         instance_format = image_root + '/outputimage_' + str(instance_data['trajectory_id']) + '_{}_' + str(instance_data['view']) + '.png'
@@ -86,7 +86,7 @@ class ImageActionDatasetGripperWidth(Dataset):
                     self.filenames.append(new_instance)
 
     def __len__(self):
-        return len(self.filenames)
+        return len(self.filenames) * 32
 
     def __getitem__(self, index):
 
@@ -94,7 +94,7 @@ class ImageActionDatasetGripperWidth(Dataset):
             return 0.0 if x > 0.07 else 1.0
     
     
-        data = self.filenames[index]
+        data = self.filenames[index % len(self.filenames)]
 
         # 去掉最后补全用的重复帧
         num_frames = data['frame_number']
