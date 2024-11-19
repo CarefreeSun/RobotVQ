@@ -54,7 +54,7 @@ def main():
     parser.add_argument('--action_activation', nargs='+', type=str, default=('none', 'none', 'sigmoid'),
                          help='activation function for action, should be an attribute of torch or none')
     parser.add_argument('--action_hidden_dim', type=int, default=128, help='hidden dimention of action')
-    parser.add_argument('--video_action_layers', type=int, default=4, help='number of attention layers')
+    parser.add_argument('--video_action_layers', type=int, default=12, help='number of attention layers')
     parser.add_argument('--action_mask', action='store_true', help='mask action')
     parser.add_argument('--action_mask_ratio', type=float, default=0.1, help='mask ratio for action')
     parser.add_argument('--wo_transformer_residual', action='store_true', help='use transformer residual')
@@ -68,7 +68,7 @@ def main():
                                 "/mnt/robotdata/RT1/RT1-images"))
     parser.add_argument("--normalize", action="store_true", help="normalize the actions")
     parser.add_argument("--sequence_length", type=int, default=3)
-    parser.add_argument("--batch_size", type=int, default=8)
+    parser.add_argument("--batch_size", type=int, default=4)
     parser.add_argument("--num_workers", type=int, default=1)
     parser.add_argument("--resolution", type=int, default=256)
     parser.add_argument('--image_channels', type=int, default=3)
