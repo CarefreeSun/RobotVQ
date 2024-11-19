@@ -554,13 +554,13 @@ class ActionDecoder(nn.Module):
         super().__init__()
         self.fc1 = nn.Linear(embed_dim, hidden_dim * 2)
         self.act1 = SiLU()
-        
+        self.dropout1 = nn.Dropout(0.5)
         self.fc2 = nn.Linear(hidden_dim * 2, hidden_dim * 4)
         self.act2 = SiLU()
-        
+        self.dropout2 = nn.Dropout(0.5)
         self.fc3 = nn.Linear(hidden_dim * 4, hidden_dim)
         self.act3 = SiLU()
-        
+        self.dropout3 = nn.Dropout(0.5)
         self.fc4 = nn. Linear(hidden_dim, output_dim)
         self.start_block = nn.Sequential(
             SiLU(),
@@ -573,13 +573,13 @@ class ActionDecoder(nn.Module):
         h = self.start_block(x)
         h = self.fc1(h)
         h = self.act1(h)
-        # h = self.dropout1(h)
+        h = self.dropout1(h)
         h = self.fc2(h)
         h = self.act2(h)
-        # h = self.dropout2(h)
+        h = self.dropout2(h)
         h = self.fc3(h)
         h = self.act3(h)
-        # h = self.dropout3(h)
+        h = self.dropout3(h)
         h = self.fc4(h)
         h = self.activation(h)
         return h
