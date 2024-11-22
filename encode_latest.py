@@ -143,36 +143,49 @@ with torch.no_grad():
                     # 未重复
                     prev_frame_id = cur_frame_id
 
-                num_start = num_frames - 3
+                num_start = num_frames - 1
 
-                for start in range(0, num_start, args.n_stacked_clips):
+                for start in range(-1, num_start, args.n_stacked_clips): # n_stacked_clips 设为1
                     try:
                         videos, actions = [], []
-                        for stack_cnt in range(args.n_stacked_clips): 
-                            if start + stack_cnt == num_start:
+                        start_frames, end_frames = [], []
+                        for stack_cnt in range(args.n_stacked_clips):
+                            start_frame_id = start + stack_cnt 
+                            if start_frame_id == num_start:
                                 break
                             video, action = [], []
                             # if start is 0, encode 6 duplicate first frame and 6 null action
                             # else, encode frame i - 1 to i + 4 and action i - 1 to i + 4
                             # note that frame id refers to the id in frame index list, not the actual frame id when collecting since some frame is lost
 
-                            if start+stack_cnt == 0: # video will be self.length duplicates of frame 0, and each action entry will be [0] * 7
+                            if start_frame_id == -1: # video will be self.length duplicates of frame 0, and each action entry will be [0] * 7
                                 # img_filename = instance_format.format(instance_data['image_indices'][0])
-                                if dataset_name == 'pizza':
-                                    img_filename = instance_format.format(instance_data['image_indices'][0])
-                                else:
-                                    img_filename = instance_format.format(instance_data['image_indices'][0])
+                                start_frames.append(-1)
+                                end_frames.append(instance_data['image_indices'][0])
+                                img_filename = instance_format.format(instance_data['image_indices'][0])
                                 img = Image.open(img_filename)
                                 img = transform(img)
-                                video = [img] * args.sequence_length
+                                video = [img] * 2
                                 action = [[0. for _ in range(6)] + [reset_gripper_width(instance_data['action_gripper'][0][-1])] for _ in range(args.sequence_length)]
                             else:
-                                for i in range(start + stack_cnt - 1, start + stack_cnt + 5):
-                                    img_filename = instance_format.format(instance_data['image_indices'][i])
-                                    img = Image.open(img_filename)
-                                    img = transform(img)
-                                    video.append(img)
-                                    action.append(instance_data['actions'][i][:-1] + [reset_gripper_width(instance_data['action_gripper'][i][-1])])
+                                start_frames.append(instance_data['image_indices'][start_frame_id])
+                                img_start_path = instance_data['image_paths'].format(instance_data['image_indices'][start_frame_id])
+                                img_start = Image.open(img_start_path)
+                                img_start = transform(img_start)
+                                if start_frame_id + args.sequence_length <= num_frames - 1:
+                                    end_frames.append(instance_data['image_indices'][start_frame_id + args.sequence_length])
+                                    img_end_path = instance_data['image_paths'].format(instance_data['image_indices'][start_frame_id + args.sequence_length])
+                                    img_end = Image.open(img_end_path)
+                                    img_end = transform(img_end)
+                                    video = [img_start, img_end]
+                                    
+                                    for i in range(start_frame_id, start_frame_id + args.sequence_length):
+                                        actions.append(instance_data['actions'][i][:-1] + [reset_gripper_width(instance_data['action_gripper'][i][-1])])
+                                else: # 末尾已经超出边界
+                                    end_frames.append(instance_data['image_indices'][start_frame_id])
+                                    video = [img_start] * 2
+                                    greeper_state = reset_gripper_width(instance_data['action_gripper'][start][-1])
+                                    actions = [[0. for _ in range(6)] + [greeper_state] for _ in range(args.sequence_length)]
 
                             videos.append(torch.stack(video).permute(1,0,2,3)) # [C, T, H, W])
                             actions.append(torch.tensor(action)) # [T, 7]
@@ -188,21 +201,12 @@ with torch.no_grad():
                         video_tokens, action_tokens = vq_output['encodings'].reshape(n_stacked, -1), vq_output_action['encodings'].reshape(n_stacked, -1)
 
                         for stack_cnt in range(n_stacked):
-                            # search for proper clip description
-                            disc_id = None
-                            if (start + stack_cnt != 0):
-                                start_frame = start + stack_cnt - 1
-                                for i in range(max(0, start_frame - 2), min(num_frames, start_frame + 3)): # 搜索开始帧的前2帧到后2帧
-                                    if str(instance_data['image_indices'][i]) in instance_data['descriptions']:
-                                        disc_id = str(instance_data['image_indices'][i])
-
                             ret = {
                                 'trajectory_id': instance_data['trajectory_id'],
                                 'view': instance_data['view'],
-                                'start_frame': instance_data['image_indices'][start + stack_cnt - 1] if (start+stack_cnt) > 0 else -1,
+                                'start_frame': start_frames[stack_cnt],
+                                'end_frame': end_frames[stack_cnt],
                                 'task_description': instance_data['task_description'],
-                                'scene_description': instance_data['scene_description'],
-                                'clip_description': instance_data['descriptions'][disc_id] if (((start+stack_cnt) != 0) and (disc_id is not None)) else "",
                                 'video_tokens': video_tokens[stack_cnt].tolist(),
                                 'action_tokens': action_tokens[stack_cnt].tolist(),
                             }
