@@ -53,6 +53,7 @@ class VQGANDinoV2Action(pl.LightningModule):
         self.embedding_dim = args.embedding_dim
         self.n_codes = args.n_codes
         self.automatic_optimization = False
+        self.sequence_length = args.sequence_length
 
         if not hasattr(args, 'padding_type'):
             args.padding_type = 'replicate'
@@ -66,18 +67,16 @@ class VQGANDinoV2Action(pl.LightningModule):
         activations = [getattr(torch, args.action_activation[i]) if args.action_activation[i] != 'none' else torch.nn.Identity() for i in range(len(args.action_activation))]
         self.action_decoder = ActionDecoderStack(args.embedding_dim, args.action_hidden_dim, args.action_dim, activations)
 
-        self.attn_pe = nn.Parameter(torch.zeros([1, 256 + self.sequence_length * len(args.action_dim), args.embedding_dim])) # [1, 1*16*16+T*7, embed_dim]
+        self.attn_pe = nn.Parameter(torch.zeros([1, 256 + self.sequence_length * len(args.action_dim), args.embedding_dim])) # [1, 1*16*16+T*3, embed_dim] 
         attn_layer = nn.TransformerDecoderLayer(d_model=args.embedding_dim, nhead=8, batch_first=True)
         self.video_action_attn = nn.TransformerDecoder(attn_layer, num_layers=args.video_action_layers)
+        
         
         self.codebook = Codebook(args.n_codes, args.embedding_dim, no_random_restart=args.no_random_restart, restart_thres=args.restart_thres)
 
         self.l1_weight = args.l1_weight
         self.l1_action_weight = args.l1_action_weight
-        self.use_pixel_weight = args.use_pixel_weight
-        self.frame_diff_thresh = args.frame_diff_thresh
-        self.high_weight = args.high_weight
-        self.low_weight = args.low_weight
+
         self.save_hyperparameters()
 
     @property
@@ -86,35 +85,22 @@ class VQGANDinoV2Action(pl.LightningModule):
                        self.args.resolution)
         return tuple([s // d for s, d in zip(input_shape,
                                              self.args.downsample)])
-    
-    def pixel_weight(self, x: torch.Tensor):
-        # x.shape = [B, C, T, H, W], value is in [-0.5, 0.5]
-        # calculate difference between adjacent frames to determine pixel-level reconstruction loss weight
-        B, C, T, H, W = x.shape
-        thresh = self.frame_diff_thresh
-        high_weight = self.high_weight
-        low_weight = self.low_weight
-        with torch.no_grad():
-            weight_map = torch.ones([B, T, H, W], device=x.device) # keep first frame average, change weights of other frames
-            frame_diff = (x[:, :, 1:, :, :] - x[:, :, :-1, :, :]).sum(dim=1)
-            weight_map[:, 1:, :, :] = torch.where(frame_diff > thresh,  high_weight, low_weight)
-        return weight_map
 
     def encode(self, x, x_action, include_embeddings=False):
         z_vision = self.pre_vq_conv(self.encoder(x)) # B, embed_dim, t, h, w  *t, h, w is downsampled T, H, W*
-        z_action = self.action_encoder(x_action).permute(0, 2, 1, 3) # B, embed_dim, T, 7
+        z_action = self.action_encoder(x_action).permute(0, 2, 1, 3) # B, embed_dim, T, 3
 
         v_shape = z_vision.shape
         a_shape = z_action.shape
 
         # cat the action embeddings to the visual embeddings, and do self-attention
-        z_vision_action = torch.cat([z_vision.flatten(2), z_action.flatten(2)], dim=-1).permute(0, 2, 1) # B, (t*h*w+T*7), embed_dim
-        z_vision_action += self.attn_pe
-        z_vision_action = self.video_action_attn(z_vision_action, z_vision_action) # B, (t*h*w+T*7, embed_dim
+        z_vision_action = torch.cat([z_vision.flatten(2), z_action.flatten(2)], dim=-1).permute(0, 2, 1) # B, (t*h*w+T*3), embed_dim
+        z_vision_action = z_vision_action + self.attn_pe
+        z_vision_action = self.video_action_attn(z_vision_action, z_vision_action) # B, (t*h*w+T*3), embed_dim
 
         if self.args.wo_transformer_residual:
             z_vision = z_vision_action[:, :v_shape[2]*v_shape[3]*v_shape[4]].permute(0, 2, 1).reshape(v_shape) # B, embed_dim, t, h, w
-            z_action = z_vision_action[:, v_shape[2]*v_shape[3]*v_shape[4]:].permute(0, 2, 1).reshape(a_shape) # B, embed_dim, T, 7
+            z_action = z_vision_action[:, v_shape[2]*v_shape[3]*v_shape[4]:].permute(0, 2, 1).reshape(a_shape) # B, embed_dim, T, 3
         else:
             z_vision = z_vision_action[:, :v_shape[2]*v_shape[3]*v_shape[4]].permute(0, 2, 1).reshape(v_shape) + z_vision
             z_action = z_vision_action[:, v_shape[2]*v_shape[3]*v_shape[4]:].permute(0, 2, 1).reshape(a_shape) + z_action
@@ -132,9 +118,9 @@ class VQGANDinoV2Action(pl.LightningModule):
         h = self.post_vq_conv(shift_dim(h, -1, 1)) # B, embed_dim, t, h, w
         visual_decoded = self.decoder(h) # B, T, C, H, W
 
-        h_action = F.embedding(encodings_action, self.codebook.embeddings) # B, T, 7, embed_dim
-        h_action = h_action.permute(0, 1, 3, 2) # B, T, embed_dim, 7
-        action_decoded = self.action_decoder(h_action) # B, T, embed_dim, 7
+        h_action = F.embedding(encodings_action, self.codebook.embeddings) # B, T, 3, embed_dim
+        h_action = h_action.permute(0, 1, 3, 2) # B, T, embed_dim, 3
+        action_decoded = self.action_decoder(h_action) # B, T, embed_dim, 3
         
         return visual_decoded, action_decoded
 
@@ -143,28 +129,32 @@ class VQGANDinoV2Action(pl.LightningModule):
         h = self.post_vq_conv(shift_dim(h, -1, 1)) # B, embed_dim, t, h, w
         return self.decoder(h) # B, T, C, H, W
 
-    def decode_action(self, encodings): # encodings: B, T, 7
-        h = F.embedding(encodings, self.codebook.embeddings) # B, T, 7, embed_dim
+    def decode_action(self, encodings): # encodings: B, T, 3
+        h = F.embedding(encodings, self.codebook.embeddings) # B, T, 3, embed_dim
         h = h.permute(0, 1, 3, 2)
         return self.action_decoder(h)
 
     def forward(self, x, x_action, x_action_masked=None, opt_stage=None, log_image=False):
         B, C, T, H, W = x.shape 
         # x_action is in shape B, T, action_dim
+        # print("x_v_shape: {}, x_a_shape: {}".format(x.shape, x_action.shape))
 
         z_vision = self.pre_vq_conv(self.encoder(x)) # B, embed_dim, t, h, w  *t, h, w is downsampled T, H, W*
-        z_action = self.action_encoder(x_action if x_action_masked is None else x_action_masked).permute(0, 2, 1, 3) # B, embed_dim, T, 7
+        z_action = self.action_encoder(x_action if x_action_masked is None else x_action_masked)
+        # print("v_shape: {}, a_shape: {}".format(z_vision.shape, z_action.shape))
+        z_action = z_action.permute(0, 2, 1, 3) # B, embed_dim, T, 3
 
         v_shape = z_vision.shape
         a_shape = z_action.shape
 
         # cat the action embeddings to the visual embeddings, and do self-attention
-        z_vision_action = torch.cat([z_vision.flatten(2), z_action.flatten(2)], dim=-1).permute(0, 2, 1) # B, (t*h*w+T*7), embed_dim
-        z_vision_action = self.video_action_attn(z_vision_action, z_vision_action) # B, (t*h*w+T*7, embed_dim
+        z_vision_action = torch.cat([z_vision.flatten(2), z_action.flatten(2)], dim=-1).permute(0, 2, 1) # B, (t*h*w+T*3), embed_dim
+        z_vision_action = z_vision_action + self.attn_pe
+        z_vision_action = self.video_action_attn(z_vision_action, z_vision_action) # B, (t*h*w+T*3), embed_dim
 
         if self.args.wo_transformer_residual:
             z_vision = z_vision_action[:, :v_shape[2]*v_shape[3]*v_shape[4]].permute(0, 2, 1).reshape(v_shape) # B, embed_dim, t, h, w
-            z_action = z_vision_action[:, v_shape[2]*v_shape[3]*v_shape[4]:].permute(0, 2, 1).reshape(a_shape) # B, embed_dim, T, 7
+            z_action = z_vision_action[:, v_shape[2]*v_shape[3]*v_shape[4]:].permute(0, 2, 1).reshape(a_shape) # B, embed_dim, T, 3
         else:
             z_vision = z_vision_action[:, :v_shape[2]*v_shape[3]*v_shape[4]].permute(0, 2, 1).reshape(v_shape) + z_vision
             z_action = z_vision_action[:, v_shape[2]*v_shape[3]*v_shape[4]:].permute(0, 2, 1).reshape(a_shape) + z_action
@@ -176,15 +166,9 @@ class VQGANDinoV2Action(pl.LightningModule):
         vq_embeddings_action = vq_output_action['embeddings'] # B, embed_dim, T, 7, 1
         
         x_recon = self.decoder(self.post_vq_conv(vq_embeddings))
-        x_recon_action = self.action_decoder(vq_embeddings_action.squeeze(-1).permute(0, 2, 1, 3)) # B, T, embed_dim, 7
+        x_recon_action = self.action_decoder(vq_embeddings_action.squeeze(-1).permute(0, 2, 1, 3)) # B, T, embed_dim, 3
 
-        assert self.use_pixel_weight
-        if self.use_pixel_weight:
-            recon_loss = (x_recon - x).abs().mean(dim=1) # B, T, H, W
-            weight_vision = self.pixel_weight(x) # B, T, H, W
-            recon_loss = (recon_loss * weight_vision).mean() * self.l1_weight
-        else:
-            recon_loss = F.l1_loss(x_recon, x) * self.l1_weight
+        recon_loss = F.l1_loss(x_recon, x) * self.l1_weight
 
         recon_loss_action = F.l1_loss(x_recon_action, x_action) * self.l1_action_weight
 
@@ -210,7 +194,6 @@ class VQGANDinoV2Action(pl.LightningModule):
         else: # opt_stage is None, i.e., validation
             # perceptual_loss = self.perceptual_model(frames, frames_recon).mean() * self.perceptual_weight
             return recon_loss, recon_loss_action, x_recon, x_recon_action, vq_output, vq_output_action
-
         
 
     def training_step(self, batch, batch_idx):
@@ -465,150 +448,28 @@ class SamePadConvTranspose3d(nn.Module):
     def forward(self, x):
         return self.convt(F.pad(x, self.pad_input, mode=self.padding_type))
 
-        
-class NLayerDiscriminator(nn.Module):
-    def __init__(self, input_nc, ndf=64, n_layers=3, norm_layer=nn.SyncBatchNorm, use_sigmoid=False, getIntermFeat=True):
-    # def __init__(self, input_nc, ndf=64, n_layers=3, norm_layer=nn.BatchNorm2d, use_sigmoid=False, getIntermFeat=True):
-        super(NLayerDiscriminator, self).__init__()
-        self.getIntermFeat = getIntermFeat
-        self.n_layers = n_layers
-
-        kw = 4
-        padw = int(np.ceil((kw-1.0)/2))
-        sequence = [[nn.Conv2d(input_nc, ndf, kernel_size=kw, stride=2, padding=padw), nn.LeakyReLU(0.2, True)]]
-
-        nf = ndf
-        for n in range(1, n_layers):
-            nf_prev = nf
-            nf = min(nf * 2, 512)
-            sequence += [[
-                nn.Conv2d(nf_prev, nf, kernel_size=kw, stride=2, padding=padw),
-                norm_layer(nf), nn.LeakyReLU(0.2, True)
-            ]]
-
-        nf_prev = nf
-        nf = min(nf * 2, 512)
-        sequence += [[
-            nn.Conv2d(nf_prev, nf, kernel_size=kw, stride=1, padding=padw),
-            norm_layer(nf),
-            nn.LeakyReLU(0.2, True)
-        ]]
-
-        sequence += [[nn.Conv2d(nf, 1, kernel_size=kw, stride=1, padding=padw)]]
-
-        if use_sigmoid:
-            sequence += [[nn.Sigmoid()]]
-
-        if getIntermFeat:
-            for n in range(len(sequence)):
-                setattr(self, 'model'+str(n), nn.Sequential(*sequence[n]))
-        else:
-            sequence_stream = []
-            for n in range(len(sequence)):
-                sequence_stream += sequence[n]
-            self.model = nn.Sequential(*sequence_stream)
-
-    def forward(self, input):
-        if self.getIntermFeat:
-            res = [input]
-            for n in range(self.n_layers+2):
-                model = getattr(self, 'model'+str(n))
-                res.append(model(res[-1]))
-            return res[-1], res[1:]
-        else:
-            return self.model(input), None
-
-class NLayerDiscriminator3D(nn.Module):
-    def __init__(self, input_nc, ndf=64, n_layers=3, norm_layer=nn.SyncBatchNorm, use_sigmoid=False, getIntermFeat=True):
-        super(NLayerDiscriminator3D, self).__init__()
-        self.getIntermFeat = getIntermFeat
-        self.n_layers = n_layers
-
-        kw = 4
-        padw = int(np.ceil((kw-1.0)/2))
-        sequence = [[nn.Conv3d(input_nc, ndf, kernel_size=kw, stride=2, padding=padw), nn.LeakyReLU(0.2, True)]]
-
-        nf = ndf
-        for n in range(1, n_layers):
-            nf_prev = nf
-            nf = min(nf * 2, 512)
-            sequence += [[
-                nn.Conv3d(nf_prev, nf, kernel_size=kw, stride=2, padding=padw),
-                norm_layer(nf), nn.LeakyReLU(0.2, True)
-            ]]
-
-        nf_prev = nf
-        nf = min(nf * 2, 512)
-        sequence += [[
-            nn.Conv3d(nf_prev, nf, kernel_size=kw, stride=1, padding=padw),
-            norm_layer(nf),
-            nn.LeakyReLU(0.2, True)
-        ]]
-
-        sequence += [[nn.Conv3d(nf, 1, kernel_size=kw, stride=1, padding=padw)]]
-
-        if use_sigmoid:
-            sequence += [[nn.Sigmoid()]]
-
-        if getIntermFeat:
-            for n in range(len(sequence)):
-                setattr(self, 'model'+str(n), nn.Sequential(*sequence[n]))
-        else:
-            sequence_stream = []
-            for n in range(len(sequence)):
-                sequence_stream += sequence[n]
-            self.model = nn.Sequential(*sequence_stream)
-
-    def forward(self, input):
-        if self.getIntermFeat:
-            res = [input]
-            for n in range(self.n_layers+2):
-                model = getattr(self, 'model'+str(n))
-                res.append(model(res[-1]))
-            return res[-1], res[1:]
-        else:
-            return self.model(input), None
-
-class PositionalEncoding(nn.Module):
-	def __init__(self, min_deg=0, max_deg=10):
-		super(PositionalEncoding, self).__init__()
-		self.min_deg = min_deg
-		self.max_deg = max_deg
-		self.scales = torch.tensor([2 ** i for i in range(min_deg, max_deg)])
-
-	def forward(self, x):
-		# x: B*3
-		x_ = x
-		shape = list(x.shape[:-1]) + [-1]
-		x_enc = (x[..., None, :] * self.scales[:, None].to(x.device)).reshape(shape)
-		x_enc = torch.cat((x_enc, x_enc + 0.5 * torch.pi), -1)
-
-		# PE
-		x_ret = torch.sin(x_enc)
-		x_ret = torch.cat([x_ret, x_], dim=-1) # B*(6*(max_deg-min_deg)+3)
-		return x_ret
 
 class ActionEncoder(nn.Module):
-    def __init__(self, input_dim, hidden_dim, embed_dim, min_deg=0, max_deg=10):
+    def __init__(self, input_dim, hidden_dim, embed_dim):
         super().__init__()
         self.input_dim = input_dim
         self.embed_dim = embed_dim
-        self.pos_enc = PositionalEncoding(min_deg, max_deg)
-        self.fc1 = nn.Linear(input_dim * (2 * (self.pos_enc.max_deg - self.pos_enc.min_deg) + 1), hidden_dim)
-        self.dropout = nn.Dropout(0.1)
-        self.fc2 = nn.Linear(hidden_dim, embed_dim * input_dim)
+        self.fc1 = nn.Linear(input_dim, hidden_dim)
+        self.act = SiLU()
+        self.dropout = nn.Dropout(0.5)
+        self.fc2 = nn.Linear(hidden_dim, embed_dim)
         self.final_block = nn.Sequential(
             SiLU(),
-            nn.LayerNorm(embed_dim * input_dim)
+            nn.LayerNorm(embed_dim)
         )
 
     def forward(self, x):
-        x = self.pos_enc(x)
         h = self.fc1(x)
+        h = self.act(h)
         h = self.dropout(h)
         h = self.fc2(h)
         h = self.final_block(h)
-        h = h.reshape(*x.shape[:-1], self.embed_dim, self.input_dim)
+        h = h.unsqueeze(-1) # 
         return h
 
 class ActionEncoderStack(nn.Module):
@@ -616,56 +477,110 @@ class ActionEncoderStack(nn.Module):
     stack multiple action encoders with the same hidden dim and embed dim
     but different input dim
     '''
-    def __init__(self, input_dims, hidden_dim, embed_dim, min_deg=0, max_deg=10):
+    def __init__(self, input_dims, hidden_dim, embed_dim):
         super().__init__()
         self.input_dims = input_dims # a tuple
         self.encoders = nn.ModuleList()
         for input_dim in input_dims:
-            self.encoders.append(ActionEncoder(input_dim, hidden_dim, embed_dim, min_deg, max_deg))
+            self.encoders.append(ActionEncoder(input_dim, hidden_dim, embed_dim))
 
     def forward(self, x):
         # split x into B, T, input_dim
         x_split = torch.split(x, self.input_dims, dim=-1) # (B, T, input_dim) 
-        return torch.cat([encoder(x_) for encoder, x_ in zip(self.encoders, x_split)], dim=-1) # B, T, embed_dim, 7 (sum of input_dims)
+        return torch.cat([encoder(x_) for encoder, x_ in zip(self.encoders, x_split)], dim=-1) # B, T, embed_dim, 3 (sum of groups)
 
-# 4 layer action decoder
+# class ActionDecoder(nn.Module):
+#     def __init__(self, embed_dim, hidden_dim, output_dim, activation=torch.tanh):
+#         super().__init__()
+#         self.fc1 = nn.Linear(embed_dim, hidden_dim)
+#         self.dropout = nn.Dropout(0.1)
+#         self.fc2 = nn.Linear(hidden_dim, output_dim)
+#         self.start_block = nn.Sequential(
+#             SiLU(),
+#             nn.LayerNorm(embed_dim * output_dim)
+#         )
+#         self.activation = activation
+
+#     def forward(self, x):
+#         # x is in shape B, T, embed_dim
+#         # for the output, the last entry falls into [0, 1] while other entries are in [-1, 1]
+#         h = self.start_block(x)
+#         h = self.fc1(h)
+#         h = self.dropout(h)
+#         h = self.fc2(h)
+#         h = self.activation(h)
+#         # h = torch.cat([torch.tanh(h[:, :-1]), torch.sigmoid(h[:, -1:])], dim=1)
+#         return h
+    
+# class ActionDecoder(nn.Module):
+#     def __init__(self, embed_dim, hidden_dim, output_dim, activation=torch.tanh):
+#         super().__init__()
+#         self.fc1 = nn.Linear(embed_dim, hidden_dim * 2)
+#         self.act1 = SiLU()
+#         self.dropout1 = nn.Dropout(0.5)
+#         self.fc2 = nn.Linear(hidden_dim * 2, hidden_dim * 4)
+#         self.act2 = SiLU()
+#         self.dropout2 = nn.Dropout(0.5)
+#         self.fc3 = nn.Linear(hidden_dim * 4, hidden_dim)
+#         self.act3 = SiLU()
+#         self.dropout3 = nn.Dropout(0.5)
+#         self.fc4 = nn. Linear(hidden_dim, output_dim)
+#         self.start_block = nn.Sequential(
+#             SiLU(),
+#             nn.LayerNorm(embed_dim)
+#         )
+#         self.activation = activation
+
+#     def forward(self, x):
+#         # x is in shape B, T, embed_dim
+#         h = self.start_block(x)
+#         h = self.fc1(h)
+#         h = self.act1(h)
+#         h = self.dropout1(h)
+#         h = self.fc2(h)
+#         h = self.act2(h)
+#         h = self.dropout2(h)
+#         h = self.fc3(h)
+#         h = self.act3(h)
+#         h = self.dropout3(h)
+#         h = self.fc4(h)
+#         h = self.activation(h)
+#         return h
+
 class ActionDecoder(nn.Module):
     def __init__(self, embed_dim, hidden_dim, output_dim, activation=torch.tanh):
         super().__init__()
-        self.fc1 = nn.Linear(embed_dim * output_dim, hidden_dim * 2)
+        self.fc1 = nn.Linear(embed_dim, hidden_dim * 2)
         self.act1 = SiLU()
-        self.dropout1 = nn.Dropout(0.1)
-        self.fc2 = nn.Linear(hidden_dim * 2, hidden_dim * 2)
+        
+        self.fc2 = nn.Linear(hidden_dim * 2, hidden_dim * 4)
         self.act2 = SiLU()
-        self.dropout2 = nn.Dropout(0.1)
-        self.fc3 = nn.Linear(hidden_dim * 2, hidden_dim)
+        
+        self.fc3 = nn.Linear(hidden_dim * 4, hidden_dim)
         self.act3 = SiLU()
-        self.dropout3 = nn.Dropout(0.1)
+        
         self.fc4 = nn. Linear(hidden_dim, output_dim)
         self.start_block = nn.Sequential(
             SiLU(),
-            nn.LayerNorm(embed_dim * output_dim)
+            nn.LayerNorm(embed_dim)
         )
         self.activation = activation
 
     def forward(self, x):
         # x is in shape B, T, embed_dim
-        # for the output, the last entry falls into [0, 1] while other entries are in [-1, 1]
         h = self.start_block(x)
         h = self.fc1(h)
         h = self.act1(h)
-        h = self.dropout1(h)
+        # h = self.dropout1(h)
         h = self.fc2(h)
         h = self.act2(h)
-        h = self.dropout2(h)
+        # h = self.dropout2(h)
         h = self.fc3(h)
         h = self.act3(h)
-        h = self.dropout3(h)
+        # h = self.dropout3(h)
         h = self.fc4(h)
         h = self.activation(h)
-        # h = torch.cat([torch.tanh(h[:, :-1]), torch.sigmoid(h[:, -1:])], dim=1)
         return h
-    
 
 class ActionDecoderStack(nn.Module):
     '''
@@ -680,8 +595,8 @@ class ActionDecoderStack(nn.Module):
             self.decoders.append(ActionDecoder(embed_dim, hidden_dim, output_dim, activation))
 
     def forward(self, x):
-        # x is in shape B, T, embed_dim, 7
-        x_split = torch.split(x, self.output_dims, dim=-1)
+        # x is in shape B, T, embed_dim, 3
+        x_split = torch.split(x, (1, 1, 1), dim=-1)
         return torch.cat([decoder(x_.flatten(-2)) for decoder, x_ in zip(self.decoders, x_split)], dim=-1)
 
 class VQGANDinoV2ActionEval(nn.Module):
@@ -710,7 +625,7 @@ class VQGANDinoV2ActionEval(nn.Module):
         activations = [getattr(torch, args.action_activation[i]) if args.action_activation[i] != 'none' else torch.nn.Identity() for i in range(len(args.action_activation))]
         self.action_decoder = ActionDecoderStack(args.embedding_dim, args.action_hidden_dim, args.action_dim, activations)
 
-        self.attn_pe = nn.Parameter(torch.zeros([1, 256 + self.sequence_length * len(args.action_dim), args.embedding_dim])) # [1, 1*16*16+T*7, embed_dim]
+        self.attn_pe = nn.Parameter(torch.zeros([1, 256 + self.sequence_length * len(args.action_dim), args.embedding_dim])) # [1, 1*16*16+T*3, embed_dim] 
         attn_layer = nn.TransformerDecoderLayer(d_model=args.embedding_dim, nhead=8, batch_first=True)
         self.video_action_attn = nn.TransformerDecoder(attn_layer, num_layers=args.video_action_layers)
         
@@ -725,19 +640,19 @@ class VQGANDinoV2ActionEval(nn.Module):
 
     def encode(self, x, x_action, include_embeddings=False):
         z_vision = self.pre_vq_conv(self.encoder(x)) # B, embed_dim, t, h, w  *t, h, w is downsampled T, H, W*
-        z_action = self.action_encoder(x_action).permute(0, 2, 1, 3) # B, embed_dim, T, 7
+        z_action = self.action_encoder(x_action).permute(0, 2, 1, 3) # B, embed_dim, T, 3
 
         v_shape = z_vision.shape
         a_shape = z_action.shape
 
         # cat the action embeddings to the visual embeddings, and do self-attention
-        z_vision_action = torch.cat([z_vision.flatten(2), z_action.flatten(2)], dim=-1).permute(0, 2, 1) # B, (t*h*w+T*7), embed_dim
-        z_vision_action += self.attn_pe
-        z_vision_action = self.video_action_attn(z_vision_action, z_vision_action) # B, (t*h*w+T*7, embed_dim
+        z_vision_action = torch.cat([z_vision.flatten(2), z_action.flatten(2)], dim=-1).permute(0, 2, 1) # B, (t*h*w+T*3), embed_dim
+        z_vision_action = z_vision_action + self.attn_pe
+        z_vision_action = self.video_action_attn(z_vision_action, z_vision_action) # B, (t*h*w+T*3), embed_dim
 
         if self.args.wo_transformer_residual:
             z_vision = z_vision_action[:, :v_shape[2]*v_shape[3]*v_shape[4]].permute(0, 2, 1).reshape(v_shape) # B, embed_dim, t, h, w
-            z_action = z_vision_action[:, v_shape[2]*v_shape[3]*v_shape[4]:].permute(0, 2, 1).reshape(a_shape) # B, embed_dim, T, 7
+            z_action = z_vision_action[:, v_shape[2]*v_shape[3]*v_shape[4]:].permute(0, 2, 1).reshape(a_shape) # B, embed_dim, T, 3
         else:
             z_vision = z_vision_action[:, :v_shape[2]*v_shape[3]*v_shape[4]].permute(0, 2, 1).reshape(v_shape) + z_vision
             z_action = z_vision_action[:, v_shape[2]*v_shape[3]*v_shape[4]:].permute(0, 2, 1).reshape(a_shape) + z_action
@@ -755,9 +670,9 @@ class VQGANDinoV2ActionEval(nn.Module):
         h = self.post_vq_conv(shift_dim(h, -1, 1)) # B, embed_dim, t, h, w
         visual_decoded = self.decoder(h) # B, T, C, H, W
 
-        h_action = F.embedding(encodings_action, self.codebook.embeddings) # B, T, 7, embed_dim
-        h_action = h_action.permute(0, 1, 3, 2) # B, T, embed_dim, 7
-        action_decoded = self.action_decoder(h_action) # B, T, embed_dim, 7
+        h_action = F.embedding(encodings_action, self.codebook.embeddings) # B, T, 3, embed_dim
+        h_action = h_action.permute(0, 1, 3, 2) # B, T, embed_dim, 3
+        action_decoded = self.action_decoder(h_action) # B, T, embed_dim, 3
         
         return visual_decoded, action_decoded
 
@@ -766,8 +681,8 @@ class VQGANDinoV2ActionEval(nn.Module):
         h = self.post_vq_conv(shift_dim(h, -1, 1)) # B, embed_dim, t, h, w
         return self.decoder(h) # B, T, C, H, W
 
-    def decode_action(self, encodings): # encodings: B, T, 7
-        h = F.embedding(encodings, self.codebook.embeddings) # B, T, 7, embed_dim
+    def decode_action(self, encodings): # encodings: B, T, 3
+        h = F.embedding(encodings, self.codebook.embeddings) # B, T, 3, embed_dim
         h = h.permute(0, 1, 3, 2)
         return self.action_decoder(h)
 
@@ -783,6 +698,7 @@ class VQGANDinoV2ActionEval(nn.Module):
 
         # cat the action embeddings to the visual embeddings, and do self-attention
         z_vision_action = torch.cat([z_vision.flatten(2), z_action.flatten(2)], dim=-1).permute(0, 2, 1) # B, (t*h*w+T*7), embed_dim
+        z_vision_action = z_vision_action + self.attn_pe
         z_vision_action = self.video_action_attn(z_vision_action, z_vision_action) # B, (t*h*w+T*7, embed_dim
 
         if self.args.wo_transformer_residual:
@@ -800,10 +716,5 @@ class VQGANDinoV2ActionEval(nn.Module):
         
         x_recon = self.decoder(self.post_vq_conv(vq_embeddings))
         x_recon_action = self.action_decoder(vq_embeddings_action.squeeze(-1).permute(0, 2, 1, 3)) # B, T, embed_dim, 7
-
-        frame_idx = torch.randint(0, T, [B]).to(x.device)
-        frame_idx_selected = frame_idx.reshape(-1, 1, 1, 1, 1).repeat(1, C, 1, H, W)
-        frames = torch.gather(x, 2, frame_idx_selected).squeeze(2)
-        frames_recon = torch.gather(x_recon, 2, frame_idx_selected).squeeze(2)
 
         return x_recon, x_recon_action, vq_output, vq_output_action

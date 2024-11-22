@@ -109,7 +109,7 @@ class ImageActionDatasetGripperWidth(Dataset):
         data['frame_number'] = num_frames
         # num_start = num_frames - 5
 
-        start = torch.randint(-1, data['frame_number'] - self.length - 1, (1,)).item()
+        start = torch.randint(-1, data['frame_number'] - 1, (1,)).item()
         video = []
         actions = []
 
@@ -131,18 +131,25 @@ class ImageActionDatasetGripperWidth(Dataset):
                     img_start_path = data['image_paths'].format(data['image_indices'][start])
                     img_start = Image.open(img_start_path)
                     img_start = self.transform(img_start)
-                    img_end_path = data['image_paths'].format(data['image_indices'][start + self.length])
-                    img_end = Image.open(img_end_path)
-                    img_end = self.transform(img_end)
-                    video = [img_start, img_end]
-                    
-                    for i in range(start, start + self.length):
+                    if start + self.length <= data['frame_number'] - 1:
+                        img_end_path = data['image_paths'].format(data['image_indices'][start + self.length])
+                        img_end = Image.open(img_end_path)
+                        img_end = self.transform(img_end)
+                        video = [img_start, img_end]
+                        
+                        for i in range(start, start + self.length):
+                            if self.action:
+                                actions.append(data['actions'][i][:-1] + [reset_gripper_width(data['action_gripper'][i][-1])])
+                    else: # 末尾已经超出边界
+                        video = [img_start] * 2
                         if self.action:
-                            actions.append(data['actions'][i][:-1] + [reset_gripper_width(data['action_gripper'][i][-1])])
+                            greeper_state = reset_gripper_width(data['action_gripper'][start][-1])
+                            actions = [[0. for _ in range(6)] + [greeper_state] for _ in range(self.length)]
+
                 break
             except:
                 print('Missing image: ' + data['image_paths'].format(data['image_indices'][0]))
-                start = torch.randint(-1, data['frame_number'] - self.length - 1, (1,)).item() # resample
+                start = torch.randint(-1, data['frame_number'] - 1, (1,)).item() # resample
         
         if self.action and self.mask_action:
             mask_indices = torch.randperm(self.length)[:int(self.length * self.mask_action_ratio)]

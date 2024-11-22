@@ -50,8 +50,8 @@ def main():
     parser.add_argument('--no_random_restart', action='store_true')
     parser.add_argument('--norm_type', type=str, default='batch', choices=['batch', 'group'])
     parser.add_argument('--padding_type', type=str, default='replicate', choices=['replicate', 'constant', 'reflect', 'circular'])
-    parser.add_argument('--action_dim', nargs='+', type=int, default=(3, 3, 1), help='number of action dimention, xyz, rpy, gripper')
-    parser.add_argument('--action_activation', nargs='+', type=str, default=('none', 'none', 'sigmoid'),
+    parser.add_argument('--action_dim', nargs='+', type=int, default=(1,1,1,1,1,1,1), help='number of action dimention, xyz, rpy, gripper')
+    parser.add_argument('--action_activation', nargs='+', type=str, default=('none', 'none', 'none', 'none', 'none', 'none', 'sigmoid'),
                          help='activation function for action, should be an attribute of torch or none')
     parser.add_argument('--action_hidden_dim', type=int, default=128, help='hidden dimention of action')
     parser.add_argument('--video_action_layers', type=int, default=12, help='number of attention layers')
