@@ -67,9 +67,7 @@ class VQGANDinoV2Action(pl.LightningModule):
         activations = [getattr(torch, args.action_activation[i]) if args.action_activation[i] != 'none' else torch.nn.Identity() for i in range(len(args.action_activation))]
         self.action_decoder = ActionDecoderStack(args.embedding_dim, args.action_hidden_dim, args.action_dim, activations)
 
-        self.attn_pe = nn.Parameter(torch.zeros([1, 256 + self.sequence_length * len(args.action_dim), args.embedding_dim])) # [1, 1*16*16+T*7, embed_dim]
-        attn_layer = nn.TransformerDecoderLayer(d_model=args.embedding_dim, nhead=8, batch_first=True)
-        self.video_action_attn = nn.TransformerDecoder(attn_layer, num_layers=args.video_action_layers)
+        self.video_action_attn = VisionActionAttention(args.sequence_length, args.action_dim, args.embedding_dim, args.video_action_layers)
         
         self.codebook = Codebook(args.n_codes, args.embedding_dim, no_random_restart=args.no_random_restart, restart_thres=args.restart_thres)
 
@@ -110,7 +108,6 @@ class VQGANDinoV2Action(pl.LightningModule):
 
         # cat the action embeddings to the visual embeddings, and do self-attention
         z_vision_action = torch.cat([z_vision.flatten(2), z_action.flatten(2)], dim=-1).permute(0, 2, 1) # B, (t*h*w+T*7), embed_dim
-        z_vision_action += self.attn_pe
         z_vision_action = self.video_action_attn(z_vision_action, z_vision_action) # B, (t*h*w+T*7, embed_dim
 
         if self.args.wo_transformer_residual:
@@ -202,6 +199,7 @@ class VQGANDinoV2Action(pl.LightningModule):
                             'train/recon_loss_action': recon_loss_action,
                             'train/commitment_loss': vq_output['commitment_loss'],
                             'train/commitment_loss_action': vq_output_action['commitment_loss'], # 原特征与VQ特征之间的距离约束
+                            'train/kl_reg_action': vq_output_action['kl_reg'], # KL散度正则项，防止index collapse
                             'train/perplexity': vq_output['perplexity'], # 仅作为指标，不做优化
                             'train/perplexity_action': vq_output_action['perplexity']},
                             prog_bar=True, logger=True, on_step=True, on_epoch=True, sync_dist=True,
@@ -225,7 +223,8 @@ class VQGANDinoV2Action(pl.LightningModule):
         recon_loss, recon_loss_action, _, _, vq_output, vq_output_action = self.forward(x, x_action, x_action_masked, opt_stage=0)
         commitment_loss = vq_output['commitment_loss']
         commitment_loss_action = vq_output_action['commitment_loss']
-        loss_ae = recon_loss + recon_loss_action + commitment_loss + commitment_loss_action
+        kl_reg_action = vq_output_action['kl_reg']
+        loss_ae = recon_loss + recon_loss_action + commitment_loss + commitment_loss_action + kl_reg_action
         opt_ae.zero_grad()
         self.manual_backward(loss_ae)
         opt_ae.step()
@@ -684,7 +683,18 @@ class ActionDecoderStack(nn.Module):
         # x is in shape B, T, embed_dim, 7
         x_split = torch.split(x, self.output_dims, dim=-1)
         return torch.cat([decoder(x_.flatten(-2)) for decoder, x_ in zip(self.decoders, x_split)], dim=-1)
-
+    
+class VisionActionAttention(nn.Module):
+    def __init__(self, sequence_length, action_dim, embedding_dim, video_action_layers):
+        super().__init__()
+        self.attn_pe = nn.Parameter(torch.zeros([1, 256 + sequence_length * len(action_dim), embedding_dim])) # [1, 1*16*16+T*7, embed_dim]
+        attn_layer = nn.TransformerDecoderLayer(d_model=embedding_dim, nhead=8, batch_first=True)
+        self.video_action_attn = nn.TransformerDecoder(attn_layer, num_layers=video_action_layers)
+    def forward(self, x):
+        h = x + self.attn_pe
+        h = self.video_action_attn(h)
+        return h
+    
 class VQGANDinoV2ActionEval(nn.Module):
     '''
     Add an action encoder to the Video VQGAN model
@@ -712,9 +722,7 @@ class VQGANDinoV2ActionEval(nn.Module):
         activations = [getattr(torch, args.action_activation[i]) if args.action_activation[i] != 'none' else torch.nn.Identity() for i in range(len(args.action_activation))]
         self.action_decoder = ActionDecoderStack(args.embedding_dim, args.action_hidden_dim, args.action_dim, activations)
 
-        self.attn_pe = nn.Parameter(torch.zeros([1, 256 + self.sequence_length * len(args.action_dim), args.embedding_dim])) # [1, 1*16*16+T*7, embed_dim]
-        attn_layer = nn.TransformerDecoderLayer(d_model=args.embedding_dim, nhead=8, batch_first=True)
-        self.video_action_attn = nn.TransformerDecoder(attn_layer, num_layers=args.video_action_layers)
+        self.video_action_attn = VisionActionAttention(args.sequence_length, args.action_dim, args.embedding_dim, args.video_action_layers)
         
         self.codebook = Codebook(args.n_codes, args.embedding_dim, no_random_restart=args.no_random_restart, restart_thres=args.restart_thres)
 
@@ -734,7 +742,6 @@ class VQGANDinoV2ActionEval(nn.Module):
 
         # cat the action embeddings to the visual embeddings, and do self-attention
         z_vision_action = torch.cat([z_vision.flatten(2), z_action.flatten(2)], dim=-1).permute(0, 2, 1) # B, (t*h*w+T*7), embed_dim
-        z_vision_action += self.attn_pe
         z_vision_action = self.video_action_attn(z_vision_action, z_vision_action) # B, (t*h*w+T*7, embed_dim
 
         if self.args.wo_transformer_residual:

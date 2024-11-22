@@ -108,7 +108,7 @@ class VQGANDinoV2Action(pl.LightningModule):
 
         # cat the action embeddings to the visual embeddings, and do self-attention
         z_vision_action = torch.cat([z_vision.flatten(2), z_action.flatten(2)], dim=-1).permute(0, 2, 1) # B, (t*h*w+T*7), embed_dim
-        z_vision_action = self.video_action_attn(z_vision_action, z_vision_action) # B, (t*h*w+T*7, embed_dim
+        z_vision_action = self.video_action_attn(z_vision_action) # B, (t*h*w+T*7, embed_dim
 
         if self.args.wo_transformer_residual:
             z_vision = z_vision_action[:, :v_shape[2]*v_shape[3]*v_shape[4]].permute(0, 2, 1).reshape(v_shape) # B, embed_dim, t, h, w
@@ -158,7 +158,7 @@ class VQGANDinoV2Action(pl.LightningModule):
 
         # cat the action embeddings to the visual embeddings, and do self-attention
         z_vision_action = torch.cat([z_vision.flatten(2), z_action.flatten(2)], dim=-1).permute(0, 2, 1) # B, (t*h*w+T*7), embed_dim
-        z_vision_action = self.video_action_attn(z_vision_action, z_vision_action) # B, (t*h*w+T*7, embed_dim
+        z_vision_action = self.video_action_attn(z_vision_action) # B, (t*h*w+T*7, embed_dim
 
         if self.args.wo_transformer_residual:
             z_vision = z_vision_action[:, :v_shape[2]*v_shape[3]*v_shape[4]].permute(0, 2, 1).reshape(v_shape) # B, embed_dim, t, h, w
@@ -690,7 +690,7 @@ class VisionActionAttention(nn.Module):
         self.video_action_attn = nn.TransformerDecoder(attn_layer, num_layers=video_action_layers)
     def forward(self, x):
         h = x + self.attn_pe
-        h = self.video_action_attn(h)
+        h = self.video_action_attn(h, h)
         return h
     
 class VQGANDinoV2ActionEval(nn.Module):
@@ -740,7 +740,7 @@ class VQGANDinoV2ActionEval(nn.Module):
 
         # cat the action embeddings to the visual embeddings, and do self-attention
         z_vision_action = torch.cat([z_vision.flatten(2), z_action.flatten(2)], dim=-1).permute(0, 2, 1) # B, (t*h*w+T*7), embed_dim
-        z_vision_action = self.video_action_attn(z_vision_action, z_vision_action) # B, (t*h*w+T*7, embed_dim
+        z_vision_action = self.video_action_attn(z_vision_action) # B, (t*h*w+T*7, embed_dim
 
         if self.args.wo_transformer_residual:
             z_vision = z_vision_action[:, :v_shape[2]*v_shape[3]*v_shape[4]].permute(0, 2, 1).reshape(v_shape) # B, embed_dim, t, h, w
@@ -790,7 +790,7 @@ class VQGANDinoV2ActionEval(nn.Module):
 
         # cat the action embeddings to the visual embeddings, and do self-attention
         z_vision_action = torch.cat([z_vision.flatten(2), z_action.flatten(2)], dim=-1).permute(0, 2, 1) # B, (t*h*w+T*7), embed_dim
-        z_vision_action = self.video_action_attn(z_vision_action, z_vision_action) # B, (t*h*w+T*7, embed_dim
+        z_vision_action = self.video_action_attn(z_vision_action) # B, (t*h*w+T*7, embed_dim
 
         if self.args.wo_transformer_residual:
             z_vision = z_vision_action[:, :v_shape[2]*v_shape[3]*v_shape[4]].permute(0, 2, 1).reshape(v_shape) # B, embed_dim, t, h, w
