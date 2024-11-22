@@ -53,6 +53,7 @@ class VQGANDinoV2Action(pl.LightningModule):
         self.embedding_dim = args.embedding_dim
         self.n_codes = args.n_codes
         self.automatic_optimization = False
+        self.sequence_length = args.sequence_length
 
         if not hasattr(args, 'padding_type'):
             args.padding_type = 'replicate'
@@ -697,6 +698,7 @@ class VQGANDinoV2ActionEval(nn.Module):
         self.args = args
         self.embedding_dim = args.embedding_dim
         self.n_codes = args.n_codes
+        self.sequence_length = args.sequence_length
 
         if not hasattr(args, 'padding_type'):
             args.padding_type = 'replicate'
