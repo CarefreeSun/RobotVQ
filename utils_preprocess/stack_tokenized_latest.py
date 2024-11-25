@@ -34,11 +34,20 @@ for i in range(args.start_shard, args.start_shard+args.num_shards):
         end_frame = instance_data['end_frame']
 
         output_vision_tokens = []
-        input_vision_tokens = []
-        for 
-        # 非尾帧，不需要重复
-        if start_frame != end_frame: 
-            new_line_cnt = line_cnt + 1
+        output_action_tokens = []
+        # output 3 clips
+        for _ in range(3):
+            cur_start_frame = start_frame
+            cur_end_frame = end_frame
+            # not tail frame
+            if start_frame != end_frame: 
+                for i in range(1, 5):
+                    # should find the next clip in 3 frames, use 4 for debug
+                    new_line_cnt = line_cnt + i
+                    new_line = lines[new_line_cnt]
+                    new_instance_data = json.loads(new_line)
+                    cur_start_frame = start
+
         # else, next clip is 6 frames after
         else:
             new_line_cnt = line_cnt + 6
