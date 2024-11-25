@@ -75,6 +75,7 @@ parser.add_argument('--start_shard', type=int, default=0)
 parser.add_argument('--n_stacked_clips', type=int, default=10)
 
 parser.add_argument('--weight_path', type=str, default='/mnt/data-rundong/VQ3D-vision-action/0531-action111-bridge-noMask-woResidual/checkpoints/step_checkpoint-step_30000.ckpt')
+parser.add_argument('--crop_param', nargs='+', type=int, default=(200, 40, 680, 680), help='(x, y, width, height)')
 
 def reset_gripper_width(x):
     return 0.0 if x > 0.07 else 1.0
