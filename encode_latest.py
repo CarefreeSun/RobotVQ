@@ -143,7 +143,7 @@ with torch.no_grad():
                     # 未重复
                     prev_frame_id = cur_frame_id
 
-                num_start = num_frames - 1
+                num_start = num_frames
 
                 for start in range(-1, num_start, args.n_stacked_clips): # n_stacked_clips 设为1
                     try:
