@@ -25,9 +25,9 @@ for i in range(args.start_shard, args.start_shard+args.num_shards):
     n_lines = len(lines)
     line_cnt = -1
     while True:
-        if new_line_cnt == n_lines:
-            break
         line_cnt += 1
+        if line_cnt == n_lines:
+            break
         line = lines[line_cnt]
         instance_data = json.loads(line)
         trajectory_id = instance_data['trajectory_id']
