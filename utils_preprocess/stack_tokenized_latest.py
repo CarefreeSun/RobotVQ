@@ -25,6 +25,8 @@ for i in range(args.start_shard, args.start_shard+args.num_shards):
     n_lines = len(lines)
     line_cnt = -1
     while True:
+        if new_line_cnt == n_lines:
+            break
         line_cnt += 1
         line = lines[line_cnt]
         instance_data = json.loads(line)
@@ -35,33 +37,39 @@ for i in range(args.start_shard, args.start_shard+args.num_shards):
 
         output_vision_tokens = []
         output_action_tokens = []
+        new_line_cnt = line_cnt
+        cur_start_frame = start_frame
+        cur_end_frame = end_frame
+        new_line = lines[new_line_cnt]
+        new_instance_data = json.loads(new_line)
         # output 3 clips
-        for _ in range(3):
-            cur_start_frame = start_frame
-            cur_end_frame = end_frame
-            # not tail frame
-            if start_frame != end_frame: 
-                for i in range(1, 5):
-                    # should find the next clip in 3 frames, use 4 for debug
-                    new_line_cnt = line_cnt + i
+        for _ in range(3):  
+            find_next_clip = False
+            if cur_start_frame != cur_end_frame: # prev clip is not duplicated tail frames, look for next clip
+                for i in range(1, 9):
+                    # should find the next clip in 3 frames, use 9 for debug
+                    new_line_cnt += i
                     new_line = lines[new_line_cnt]
                     new_instance_data = json.loads(new_line)
-                    cur_start_frame = start
+                    new_trajectory_id = new_instance_data['trajectory_id']
+                    new_view = new_instance_data['view']
+                    if not (new_trajectory_id == trajectory_id and new_view == view):
+                        continue
+                    cur_start_frame = new_instance_data['start_frame']
+                    if cur_start_frame == cur_end_frame: # find next clip
+                        output_vision_tokens += new_instance_data['video_tokens']
+                        output_action_tokens += new_instance_data['action_tokens']
+                        cur_end_frame = new_instance_data['end_frame']
+                        find_next_clip = True
+                        break
+                assert(find_next_clip)
+            else: # prev clip is duplicated tail frames, use it again
+                output_vision_tokens += new_instance_data['video_tokens']
+                output_action_tokens += new_instance_data['action_tokens']
+                
 
-        # else, next clip is 6 frames after
-        else:
-            new_line_cnt = line_cnt + 6
-            
-        if new_line_cnt == n_lines:
-            break
-        new_line = lines[new_line_cnt]
 
-        
-        new_instance_data = json.loads(new_line)
-        new_trajectory_id = new_instance_data['trajectory_id']
-        new_view = new_instance_data['view']
-        if not (new_trajectory_id == trajectory_id and new_view == view):
-            continue
+
         '''
         create a new data that stack these two instances, with the following fields
         - trajectory_id: a integer that identifies the trajectory
@@ -80,15 +88,14 @@ for i in range(args.start_shard, args.start_shard+args.num_shards):
         stacked_instance = {}
         stacked_instance['trajectory_id'] = trajectory_id
         stacked_instance['view'] = view
-        stacked_instance['start_frame'] = instance_data['start_frame']
+        stacked_instance['input_start_frame'] = instance_data['start_frame']
+        stacked_instance['input_end_frame'] = instance_data['end_frame']
+        stacked_instance['output_end_frame'] = cur_end_frame
         stacked_instance['task_description'] = instance_data['task_description']
-        stacked_instance['scene_description'] = instance_data['scene_description']
-        stacked_instance['input_clip_description'] = instance_data['clip_description']
-        stacked_instance['output_clip_description'] = new_instance_data['clip_description']
         stacked_instance['input_video_tokens'] = instance_data['video_tokens']
-        stacked_instance['output_video_tokens'] = new_instance_data['video_tokens']
+        stacked_instance['output_video_tokens'] = output_vision_tokens
         stacked_instance['input_action_tokens'] = instance_data['action_tokens']
-        stacked_instance['output_action_tokens'] = new_instance_data['action_tokens']
+        stacked_instance['output_action_tokens'] = output_action_tokens
         dst_file.write(json.dumps(stacked_instance) + '\n')
 
 

@@ -147,72 +147,73 @@ with torch.no_grad():
                 num_start = num_frames
 
                 for start in range(-1, num_start, args.n_stacked_clips): # n_stacked_clips 设为1
-                    try:
-                        videos, actions = [], []
-                        start_frames, end_frames = [], []
-                        for stack_cnt in range(args.n_stacked_clips):
-                            start_frame_id = start + stack_cnt 
-                            if start_frame_id == num_start:
-                                break
-                            video, action = [], []
-                            # if start is 0, encode 6 duplicate first frame and 6 null action
-                            # else, encode frame i - 1 to i + 4 and action i - 1 to i + 4
-                            # note that frame id refers to the id in frame index list, not the actual frame id when collecting since some frame is lost
+                    # try:
+                    videos, actions = [], []
+                    start_frames, end_frames = [], []
+                    for stack_cnt in range(args.n_stacked_clips):
+                        start_frame_id = start + stack_cnt 
+                        if start_frame_id == num_start:
+                            break
+                        video, action = [], []
+                        # if start is 0, encode 6 duplicate first frame and 6 null action
+                        # else, encode frame i - 1 to i + 4 and action i - 1 to i + 4
+                        # note that frame id refers to the id in frame index list, not the actual frame id when collecting since some frame is lost
 
-                            if start_frame_id == -1: # video will be self.length duplicates of frame 0, and each action entry will be [0] * 7
-                                # img_filename = instance_format.format(instance_data['image_indices'][0])
-                                start_frames.append(-1)
-                                end_frames.append(instance_data['image_indices'][0])
-                                img_filename = instance_format.format(instance_data['image_indices'][0])
-                                img = Image.open(img_filename)
-                                img = transform(img)
-                                video = [img] * 2
-                                action = [[0. for _ in range(6)] + [reset_gripper_width(instance_data['action_gripper'][0][-1])] for _ in range(args.sequence_length)]
-                            else:
-                                start_frames.append(instance_data['image_indices'][start_frame_id])
-                                img_start_path = instance_format.format(instance_data['image_indices'][start_frame_id])
-                                img_start = Image.open(img_start_path)
-                                img_start = transform(img_start)
-                                if start_frame_id + args.sequence_length <= num_frames - 1:
-                                    end_frames.append(instance_data['image_indices'][start_frame_id + args.sequence_length])
-                                    img_end_path = instance_format.format(instance_data['image_indices'][start_frame_id + args.sequence_length])
-                                    img_end = Image.open(img_end_path)
-                                    img_end = transform(img_end)
-                                    video = [img_start, img_end]
-                                    
-                                    for i in range(start_frame_id, start_frame_id + args.sequence_length):
-                                        actions.append(instance_data['actions'][i][:-1] + [reset_gripper_width(instance_data['action_gripper'][i][-1])])
-                                else: # 末尾已经超出边界
-                                    end_frames.append(instance_data['image_indices'][start_frame_id])
-                                    video = [img_start] * 2
-                                    greeper_state = reset_gripper_width(instance_data['action_gripper'][start][-1])
-                                    actions = [[0. for _ in range(6)] + [greeper_state] for _ in range(args.sequence_length)]
+                        if start_frame_id == -1: # video will be self.length duplicates of frame 0, and each action entry will be [0] * 7
+                            # img_filename = instance_format.format(instance_data['image_indices'][0])
+                            start_frames.append(-1)
+                            end_frames.append(instance_data['image_indices'][0])
+                            img_filename = instance_format.format(instance_data['image_indices'][0])
+                            img = Image.open(img_filename)
+                            img = transform(img)
+                            video = [img] * 2
+                            action = [[0. for _ in range(6)] + [reset_gripper_width(instance_data['action_gripper'][0][-1])] for _ in range(args.sequence_length)]
+                        else:
+                            start_frames.append(instance_data['image_indices'][start_frame_id])
+                            img_start_path = instance_format.format(instance_data['image_indices'][start_frame_id])
+                            img_start = Image.open(img_start_path)
+                            img_start = transform(img_start)
+                            if start_frame_id + args.sequence_length <= num_frames - 1:
+                                end_frames.append(instance_data['image_indices'][start_frame_id + args.sequence_length])
+                                img_end_path = instance_format.format(instance_data['image_indices'][start_frame_id + args.sequence_length])
+                                img_end = Image.open(img_end_path)
+                                img_end = transform(img_end)
+                                video = [img_start, img_end]
+                                
+                                for i in range(start_frame_id, start_frame_id + args.sequence_length):
+                                    actions.append(instance_data['actions'][i][:-1] + [reset_gripper_width(instance_data['action_gripper'][i][-1])])
+                            else: # 末尾已经超出边界
+                                end_frames.append(instance_data['image_indices'][start_frame_id])
+                                video = [img_start] * 2
+                                greeper_state = reset_gripper_width(instance_data['action_gripper'][start][-1])
+                                actions = [[0. for _ in range(6)] + [greeper_state] for _ in range(args.sequence_length)]
 
-                            videos.append(torch.stack(video).permute(1,0,2,3)) # [C, T, H, W])
-                            actions.append(torch.tensor(action)) # [T, 7]
+                        videos.append(torch.stack(video).permute(1,0,2,3)) # [C, T, H, W])
+                        actions.append(torch.tensor(action)) # [T, 7]
 
-                        videos = torch.stack(videos).to(device)
-                        actions = torch.stack(actions).to(device)
-                        if args.normalize:
-                            actions = (actions - torch.tensor(mean).to(device)) / torch.tensor(std).to(device)
-                        n_stacked = videos.shape[0]
+                    videos = torch.stack(videos).to(device)
+                    actions = torch.stack(actions).to(device)
+                    if args.normalize:
+                        actions = (actions - torch.tensor(mean).to(device)) / torch.tensor(std).to(device)
+                    n_stacked = videos.shape[0]
 
-                        _, _, vq_output, vq_output_action = model(videos, actions)
+                    _, _, vq_output, vq_output_action = model(videos, actions)
 
-                        video_tokens, action_tokens = vq_output['encodings'].reshape(n_stacked, -1), vq_output_action['encodings'].reshape(n_stacked, -1)
+                    video_tokens, action_tokens = vq_output['encodings'].reshape(n_stacked, -1), vq_output_action['encodings'].reshape(n_stacked, -1)
 
-                        for stack_cnt in range(n_stacked):
-                            ret = {
-                                'trajectory_id': instance_data['trajectory_id'],
-                                'view': instance_data['view'],
-                                'start_frame': start_frames[stack_cnt],
-                                'end_frame': end_frames[stack_cnt],
-                                'task_description': instance_data['task_description'],
-                                'video_tokens': video_tokens[stack_cnt].tolist(),
-                                'action_tokens': action_tokens[stack_cnt].tolist(),
-                            }
-                            dst_file.write(json.dumps(ret) + '\n')
-                            dst_file.flush()
-                    except:
-                        error_log.write(line)
-                        error_log.flush()
+                    # try:
+                    for stack_cnt in range(n_stacked):
+                        ret = {
+                            'trajectory_id': instance_data['trajectory_id'],
+                            'view': instance_data['view'],
+                            'start_frame': start_frames[stack_cnt],
+                            'end_frame': end_frames[stack_cnt],
+                            'task_description': instance_data['task_description'],
+                            'video_tokens': video_tokens[stack_cnt].tolist(),
+                            'action_tokens': action_tokens[stack_cnt].tolist(),
+                        }
+                        dst_file.write(json.dumps(ret) + '\n')
+                        dst_file.flush()
+                    # except:
+                    #     error_log.write(line)
+                    #     error_log.flush()
