@@ -199,6 +199,7 @@ class VQGANDinoV2Action(pl.LightningModule):
                             'train/recon_loss_action': recon_loss_action,
                             'train/commitment_loss': vq_output['commitment_loss'],
                             'train/commitment_loss_action': vq_output_action['commitment_loss'], # 原特征与VQ特征之间的距离约束
+                            'train/kl_reg': vq_output['kl_reg'],
                             'train/kl_reg_action': vq_output_action['kl_reg'], # KL散度正则项，防止index collapse
                             'train/perplexity': vq_output['perplexity'], # 仅作为指标，不做优化
                             'train/perplexity_action': vq_output_action['perplexity']},
@@ -223,8 +224,9 @@ class VQGANDinoV2Action(pl.LightningModule):
         recon_loss, recon_loss_action, _, _, vq_output, vq_output_action = self.forward(x, x_action, x_action_masked, opt_stage=0)
         commitment_loss = vq_output['commitment_loss']
         commitment_loss_action = vq_output_action['commitment_loss']
+        kl_reg = vq_output['kl_reg']
         kl_reg_action = vq_output_action['kl_reg']
-        loss_ae = recon_loss + recon_loss_action + commitment_loss + commitment_loss_action + kl_reg_action
+        loss_ae = recon_loss + recon_loss_action + commitment_loss + commitment_loss_action + kl_reg_action + kl_reg
         opt_ae.zero_grad()
         self.manual_backward(loss_ae)
         opt_ae.step()
