@@ -11,6 +11,16 @@ from pytorch_lightning.utilities.rank_zero import rank_zero_only
 
 from ..utils import save_video_grid
 
+def denormalize(x):
+    # x [N, C, H, W]
+    assert x.shape[1] == 3 and len(x.shape) == 4
+    std = torch.tensor([0.229, 0.224, 0.225], device=x.device).unsqueeze(-1).unsqueeze(-1).unsqueeze(0)
+    mean = torch.tensor([0.485, 0.456, 0.406], device=x.device).unsqueeze(-1).unsqueeze(-1).unsqueeze(0)
+    x = x * std + mean
+    x = torch.clamp(x, 0., 1.)
+    return x
+
+
 class ImageLogger(Callback):
     def __init__(self, batch_frequency, max_images, clamp=True, increase_log_steps=False):
         super().__init__()
@@ -29,7 +39,7 @@ class ImageLogger(Callback):
         for k in images:
             grid = torchvision.utils.make_grid(images[k], nrow=4)
 
-            grid = grid + 0.5
+            # grid = grid + 0.5
             grid = grid.transpose(0,1).transpose(1,2).squeeze(-1)
             grid = grid.numpy()
             grid = (grid*255).astype(np.uint8)
@@ -58,11 +68,12 @@ class ImageLogger(Callback):
 
             for k in images:
                 N = min(images[k].shape[0], self.max_images)
-                images[k] = images[k][:N]
+                images[k] = images[k][:N] # N, C, H, W
                 if isinstance(images[k], torch.Tensor):
                     images[k] = images[k].detach().cpu()
-                    if self.clamp:
-                        images[k] = torch.clamp(images[k], -0.5, 0.5)
+                    images[k] = denormalize(images[k])
+                    # if self.clamp:
+                    #     images[k] = torch.clamp(images[k], -0.5, 0.5)
 
             self.log_local(pl_module.logger.save_dir, split, images,
                            pl_module.global_step, pl_module.current_epoch, batch_idx)
