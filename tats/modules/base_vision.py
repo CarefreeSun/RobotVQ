@@ -123,7 +123,7 @@ class TimmViTBackbone(VisionBackbone, ABC):
                 img_size=self.default_image_size,
                 act_layer=self.override_act_layer,
             )
-        self.featurizer.eval()
+        self.featurizer.eval() ##############################################
 
         # Monkey-Patch the `forward()` function of the featurizer to ensure FSDP-compatibility
         #   => Note: By default set `get_intermediate_layers` to return the *SECOND-TO-LAST* layer patches!
