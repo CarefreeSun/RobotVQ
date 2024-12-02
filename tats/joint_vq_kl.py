@@ -224,9 +224,9 @@ class VQGANDinoV2Action(pl.LightningModule):
         recon_loss, recon_loss_action, _, _, vq_output, vq_output_action = self.forward(x, x_action, x_action_masked, opt_stage=0)
         commitment_loss = vq_output['commitment_loss']
         commitment_loss_action = vq_output_action['commitment_loss']
-        kl_reg = vq_output['kl_reg']
+        # kl_reg = vq_output['kl_reg']
         kl_reg_action = vq_output_action['kl_reg']
-        loss_ae = recon_loss + recon_loss_action + commitment_loss + commitment_loss_action + kl_reg_action + kl_reg
+        loss_ae = recon_loss + recon_loss_action + commitment_loss + commitment_loss_action + kl_reg_action
         opt_ae.zero_grad()
         self.manual_backward(loss_ae)
         opt_ae.step()
