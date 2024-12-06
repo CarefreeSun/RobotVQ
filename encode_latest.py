@@ -87,7 +87,7 @@ assert args.sequence_length == 3
 
 assert args.normalize and args.wo_transformer_residual
 
-args.dst_dir = '/mnt/data-rundong/robot_datasets/' + args.weight_path.split('/')[-3] + '_step6000' + '_tokenized'
+args.dst_dir = '/mnt/data-rundong/robot_datasets/' + args.weight_path.split('/')[-3] + '_step50000' + '_tokenized'
 
 model = VQFinetuneEval(args)
 state_dict = torch.load(args.weight_path, map_location='cpu')['state_dict']
