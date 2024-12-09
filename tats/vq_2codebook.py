@@ -70,6 +70,7 @@ class VQGANDinoV2Action(pl.LightningModule):
         self.video_action_attn = VisionActionAttention(args.sequence_length, args.action_dim, args.embedding_dim, args.video_action_layers)
         
         self.codebook = Codebook(args.n_codes, args.embedding_dim, no_random_restart=args.no_random_restart, restart_thres=args.restart_thres)
+        self.action_codebook = Codebook(args.n_codes, args.embedding_dim, no_random_restart=args.no_random_restart, restart_thres=args.restart_thres)
 
         self.gan_feat_weight = args.gan_feat_weight
         self.image_discriminator = NLayerDiscriminator(args.image_channels, args.disc_channels, args.disc_layers)
@@ -134,7 +135,7 @@ class VQGANDinoV2Action(pl.LightningModule):
             z_action = z_vision_action[:, v_shape[2]*v_shape[3]*v_shape[4]:].permute(0, 2, 1).reshape(a_shape) + z_action
 
         vq_output = self.codebook(z_vision)
-        vq_output_action = self.codebook(z_action.unsqueeze(-1))
+        vq_output_action = self.action_codebook(z_action.unsqueeze(-1))
 
         if include_embeddings:
             return (vq_output['embeddings'], vq_output['encodings']), (vq_output_action['embeddings'], vq_output_action['encodings'])
@@ -146,7 +147,7 @@ class VQGANDinoV2Action(pl.LightningModule):
         h = self.post_vq_conv(shift_dim(h, -1, 1)) # B, embed_dim, t, h, w
         visual_decoded = self.decoder(h) # B, T, C, H, W
 
-        h_action = F.embedding(encodings_action, self.codebook.embeddings) # B, T, 7, embed_dim
+        h_action = F.embedding(encodings_action, self.action_codebook.embeddings) # B, T, 7, embed_dim
         h_action = h_action.permute(0, 1, 3, 2) # B, T, embed_dim, 7
         action_decoded = self.action_decoder(h_action) # B, T, embed_dim, 7
         
@@ -158,7 +159,7 @@ class VQGANDinoV2Action(pl.LightningModule):
         return self.decoder(h) # B, T, C, H, W
 
     def decode_action(self, encodings): # encodings: B, T, 7
-        h = F.embedding(encodings, self.codebook.embeddings) # B, T, 7, embed_dim
+        h = F.embedding(encodings, self.action_codebook.embeddings) # B, T, 7, embed_dim
         h = h.permute(0, 1, 3, 2)
         return self.action_decoder(h)
 
@@ -184,7 +185,7 @@ class VQGANDinoV2Action(pl.LightningModule):
             z_action = z_vision_action[:, v_shape[2]*v_shape[3]*v_shape[4]:].permute(0, 2, 1).reshape(a_shape) + z_action
 
         vq_output = self.codebook(z_vision)
-        vq_output_action = self.codebook(z_action.unsqueeze(-1))
+        vq_output_action = self.action_codebook(z_action.unsqueeze(-1))
 
         vq_embeddings = vq_output['embeddings'] # B, embed_dim, t, h, w
         vq_embeddings_action = vq_output_action['embeddings'] # B, embed_dim, T, 7, 1
@@ -363,7 +364,8 @@ class VQGANDinoV2Action(pl.LightningModule):
                                   list(self.video_action_attn.parameters())+
                                   list(self.pre_vq_conv.parameters())+
                                   list(self.post_vq_conv.parameters())+
-                                  list(self.codebook.parameters()),
+                                  list(self.codebook.parameters()) + 
+                                  list(self.action_codebook.parameters()),
                                   lr=self.args.lr, betas=(0.5, 0.9))
         scheduler_ae = torch.optim.lr_scheduler.CosineAnnealingLR(opt_ae, T_max=self.args.max_steps // 2, eta_min=0)
 
@@ -836,6 +838,7 @@ class VQGANDinoV2ActionEval(nn.Module):
         self.video_action_attn = VisionActionAttention(args.sequence_length, args.action_dim, args.embedding_dim, args.video_action_layers)
         
         self.codebook = Codebook(args.n_codes, args.embedding_dim, no_random_restart=args.no_random_restart, restart_thres=args.restart_thres)
+        self.action_codebook = Codebook(args.n_codes, args.embedding_dim, no_random_restart=args.no_random_restart, restart_thres=args.restart_thres)
 
     @property
     def latent_shape(self):
@@ -863,7 +866,7 @@ class VQGANDinoV2ActionEval(nn.Module):
             z_action = z_vision_action[:, v_shape[2]*v_shape[3]*v_shape[4]:].permute(0, 2, 1).reshape(a_shape) + z_action
 
         vq_output = self.codebook(z_vision)
-        vq_output_action = self.codebook(z_action.unsqueeze(-1))
+        vq_output_action = self.action_codebook(z_action.unsqueeze(-1))
 
         if include_embeddings:
             return (vq_output['embeddings'], vq_output['encodings']), (vq_output_action['embeddings'], vq_output_action['encodings'])
@@ -875,7 +878,7 @@ class VQGANDinoV2ActionEval(nn.Module):
         h = self.post_vq_conv(shift_dim(h, -1, 1)) # B, embed_dim, t, h, w
         visual_decoded = self.decoder(h) # B, T, C, H, W
 
-        h_action = F.embedding(encodings_action, self.codebook.embeddings) # B, T, 7, embed_dim
+        h_action = F.embedding(encodings_action, self.action_codebook.embeddings) # B, T, 7, embed_dim
         h_action = h_action.permute(0, 1, 3, 2) # B, T, embed_dim, 7
         action_decoded = self.action_decoder(h_action) # B, T, embed_dim, 7
         
@@ -887,7 +890,7 @@ class VQGANDinoV2ActionEval(nn.Module):
         return self.decoder(h) # B, T, C, H, W
 
     def decode_action(self, encodings): # encodings: B, T, 7
-        h = F.embedding(encodings, self.codebook.embeddings) # B, T, 7, embed_dim
+        h = F.embedding(encodings, self.action_codebook.embeddings) # B, T, 7, embed_dim
         h = h.permute(0, 1, 3, 2)
         return self.action_decoder(h)
 
@@ -913,7 +916,7 @@ class VQGANDinoV2ActionEval(nn.Module):
             z_action = z_vision_action[:, v_shape[2]*v_shape[3]*v_shape[4]:].permute(0, 2, 1).reshape(a_shape) + z_action
 
         vq_output = self.codebook(z_vision)
-        vq_output_action = self.codebook(z_action.unsqueeze(-1))
+        vq_output_action = self.action_codebook(z_action.unsqueeze(-1))
 
         vq_embeddings = vq_output['embeddings'] # B, embed_dim, t, h, w
         vq_embeddings_action = vq_output_action['embeddings'] # B, embed_dim, T, 7, 1
