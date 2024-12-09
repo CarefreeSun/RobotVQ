@@ -58,9 +58,8 @@ class VQGANDinoV2Action(pl.LightningModule):
         if not hasattr(args, 'padding_type'):
             args.padding_type = 'replicate'
         self.encoder = Encoder(args.n_hiddens, args.downsample, args.image_channels, args.norm_type, args.padding_type)
+        self.decoder = Decoder(args.n_hiddens, args.downsample, args.image_channels, args.norm_type)
         self.enc_out_ch = self.encoder.final_out_dim
-        self.decoder = Decoder(self.enc_out_ch, args.n_hiddens, args.downsample, args.image_channels, args.norm_type)
-
         self.pre_vq_conv = SamePadConv3d(self.enc_out_ch, args.embedding_dim, 1, padding_type=args.padding_type)
         self.post_vq_conv = SamePadConv3d(args.embedding_dim, self.enc_out_ch, 1)
 
@@ -424,8 +423,7 @@ class Encoder(nn.Module):
         self.dinov2_outdim = 1024
         self.attn_layer = nn.TransformerEncoderLayer(d_model=self.dinov2_outdim, nhead=8, batch_first=True)
 
-        # self.final_out_dim = 512 # hack: should be 512 for correctly decoding
-        self.final_out_dim = 1024
+        self.final_out_dim = 512 # hack: should be 512 for correctly decoding
         self.proj = nn.Linear(self.dinov2_outdim * self.t_downsample, self.final_out_dim)
 
         self.final_block = nn.Sequential(
@@ -462,23 +460,17 @@ class Encoder(nn.Module):
 
 
 class Decoder(nn.Module):
-    def __init__(self, in_dim, n_hiddens, upsample, image_channel, norm_type='group'):
+    def __init__(self, n_hiddens, upsample, image_channel, norm_type='group'):
         super().__init__()
 
         n_times_upsample = np.array([int(math.log2(d)) for d in upsample])
-        max_us = n_times_upsample.max() # 4 by default
+        max_us = n_times_upsample.max()
         
-        in_channels = n_hiddens*2**max_us 
-        # self.final_block = nn.Sequential(
-        #     Normalize(in_channels, norm_type),
-        #     SiLU()
-        # )
+        in_channels = n_hiddens*2**max_us
         self.final_block = nn.Sequential(
-            Normalize(in_dim, norm_type),
+            Normalize(in_channels, norm_type),
             SiLU()
         )
-        # add by shaofan on 12.9
-        self.conv_first = SamePadConv3d(in_dim, in_channels, kernel_size=3)
 
         self.conv_blocks = nn.ModuleList()
         for i in range(max_us):
@@ -495,7 +487,6 @@ class Decoder(nn.Module):
         self.conv_last = SamePadConv3d(out_channels, image_channel, kernel_size=3)
     def forward(self, x):
         h = self.final_block(x)
-        h = self.conv_first(h)
         for i, block in enumerate(self.conv_blocks):
             h = block.up(h)
             h = block.res1(h)
