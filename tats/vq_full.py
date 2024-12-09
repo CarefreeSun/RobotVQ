@@ -833,8 +833,9 @@ class VQGANDinoV2ActionEval(nn.Module):
         if not hasattr(args, 'padding_type'):
             args.padding_type = 'replicate'
         self.encoder = Encoder(args.n_hiddens, args.downsample, args.image_channels, args.norm_type, args.padding_type)
-        self.decoder = Decoder(args.n_hiddens, args.downsample, args.image_channels, args.norm_type)
         self.enc_out_ch = self.encoder.final_out_dim
+        self.decoder = Decoder(self.enc_out_ch, args.n_hiddens, args.downsample, args.image_channels, args.norm_type)
+
         self.pre_vq_conv = SamePadConv3d(self.enc_out_ch, args.embedding_dim, 1, padding_type=args.padding_type)
         self.post_vq_conv = SamePadConv3d(args.embedding_dim, self.enc_out_ch, 1)
 
