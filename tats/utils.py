@@ -119,6 +119,14 @@ def adopt_weight(global_step, threshold=0, value=0.):
         weight = value
     return weight
 
+def adopt_weight_linear(global_step, threshold=0, increase_step=1000, value=0.):
+    weight = 1
+    if global_step < threshold:
+        weight = value
+    elif global_step < threshold + increase_step:
+        weight = value + (weight - value) * ((global_step - threshold) / increase_step)
+    return weight
+
 
 def save_video_grid(video, fname, nrow=None, fps=6):
     b, c, t, h, w = video.shape

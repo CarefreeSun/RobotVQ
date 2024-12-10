@@ -39,7 +39,7 @@ def main():
     parser.add_argument('--video_gan_weight', type=float, default=0.2)
     parser.add_argument('--l1_weight', type=float, default=4.0)
     parser.add_argument('--l1_action_weight', type=float, default=10.0)
-    parser.add_argument('--gan_feat_weight', type=float, default=4.0)
+    parser.add_argument('--gan_feat_weight', type=float, default=0.2)
     parser.add_argument('--perceptual_weight', type=float, default=4.0)
     parser.add_argument('--use_pixel_weight', action='store_true')
     parser.add_argument('--frame_diff_thresh', type=float, default=0.1)
