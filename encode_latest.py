@@ -87,7 +87,7 @@ assert args.sequence_length == 3
 
 assert args.normalize and args.wo_transformer_residual
 
-args.dst_dir = '/mnt/data-rundong/robot_datasets/' + args.weight_path.split('/')[-3] + '_step50000' + '_tokenized'
+args.dst_dir = '/mnt/data-rundong/robot_datasets/' + args.weight_path.split('/')[-3] + '_step30000' + '_tokenized'
 
 model = VQFinetuneEval(args)
 state_dict = torch.load(args.weight_path, map_location='cpu')['state_dict']
@@ -96,11 +96,18 @@ result = model.load_state_dict(state_dict, strict=False)
 #     assert 'discriminator' in k or 'perceptual_model' in k
 model = model.to(device).eval()
 
+# transform = transforms.Compose([
+#     CustomCrop(crop_param=args.crop_param),
+#     transforms.Resize((args.resolution, args.resolution)),
+#     transforms.ToTensor(),
+#     transforms.Normalize((0.5, 0.5, 0.5), (1., 1., 1.)) # To [-0.5, 0.5]
+# ])
+
 transform = transforms.Compose([
     CustomCrop(crop_param=args.crop_param),
     transforms.Resize((args.resolution, args.resolution)),
     transforms.ToTensor(),
-    transforms.Normalize((0.5, 0.5, 0.5), (1., 1., 1.)) # To [-0.5, 0.5]
+    transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)) # imagenet default normalization
 ])
 
 with torch.no_grad():
