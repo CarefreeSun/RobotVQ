@@ -28,7 +28,7 @@ parser.add_argument("--default_root_dir", type=str, default="debug")
 parser.add_argument("--max_steps", type=int, default=2000000, help="max_steps")
 
 # model args
-parser.add_argument('--embedding_dim', type=int, default=512)
+parser.add_argument('--embedding_dim', type=int, default=1024)
 parser.add_argument('--n_codes', type=int, default=16384)
 parser.add_argument('--n_hiddens', type=int, default=32)
 parser.add_argument('--lr', type=float, default=3e-5)
