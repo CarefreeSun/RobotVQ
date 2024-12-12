@@ -110,4 +110,4 @@ for i in range(args.start_shard, args.start_shard+args.num_shards):
         else:
             dst_file_train.write(json.dumps(stacked_instance) + '\n')
 
-
+print('Stack Finished.')
