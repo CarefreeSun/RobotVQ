@@ -193,7 +193,7 @@ with torch.no_grad():
                                 else: # 末尾已经超出边界
                                     end_frames.append(instance_data['image_indices'][start_frame_id])
                                     video = [img_start] * 2
-                                    greeper_state = reset_gripper_width(instance_data['action_gripper'][start][-1])
+                                    greeper_state = reset_gripper_width(instance_data['action_gripper'][start_frame_id][-1])
                                     action = [[0. for _ in range(6)] + [greeper_state] for _ in range(args.sequence_length)]
 
                             videos.append(torch.stack(video).permute(1,0,2,3)) # [C, T, H, W])
