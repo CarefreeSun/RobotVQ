@@ -72,7 +72,7 @@ parser.add_argument('--split', type=str, default='test')
 parser.add_argument('--gpu_id', type=int, default=0)
 parser.add_argument('--num_shards', type=int, default=8)
 parser.add_argument('--start_shard', type=int, default=0)
-parser.add_argument('--n_stacked_clips', type=int, default=10)
+parser.add_argument('--n_stacked_clips', type=int, default=1)
 
 parser.add_argument('--weight_path', type=str, default='/mnt/data-rundong/VQ3D-vision-action/0531-action111-bridge-noMask-woResidual/checkpoints/step_checkpoint-step_30000.ckpt')
 parser.add_argument('--crop_param', nargs='+', type=int, default=(200, 40, 680, 680), help='(x, y, width, height)')
@@ -86,6 +86,8 @@ device = f'cuda:{args.gpu_id}'
 assert args.sequence_length == 3
 
 assert args.normalize and args.wo_transformer_residual
+
+assert args.n_stacked_clips == 1
 
 args.dst_dir = '/mnt/data-rundong/robot_datasets/' + args.weight_path.split('/')[-3] + '_step40000' + '_tokenized'
 
