@@ -51,7 +51,7 @@ for i in range(args.start_shard, args.start_shard+args.num_shards):
         new_line = lines[new_line_cnt]
         new_instance_data = json.loads(new_line)
         # output 3 clips
-        for _ in range(3):  
+        for _ in range(5):  
             find_next_clip = False
             if cur_start_frame != cur_end_frame: # prev clip is not duplicated tail frames, look for next clip
                 for i in range(1, 9):
